@@ -1,6 +1,9 @@
-# Maker
+# Maker: Biblioteca de treino para ia e embarcados
 
 Biblioteca em C++ para treinar e usar modelos de Machine Learning direto no microcontrolador (ESP32), sem converter modelo de outro lugar. O treino acontece no próprio chip, com dados guardados na memória flash (LittleFS).
+
+## Site da biblioteca
+[biblioteca-treino-ia-embarcados](https://biblioteca-treino-ia-embarcados.netlify.app/)
 
 ## Open Source e contribuições
 
