@@ -2,6 +2,12 @@
 
 Biblioteca em C++ para treinar e usar modelos de Machine Learning direto no microcontrolador (ESP32), sem converter modelo de outro lugar. O treino acontece no próprio chip, com dados guardados na memória flash (LittleFS).
 
+## Open Source e contribuições
+
+Este projeto é open source e aceita contribuições da comunidade. Se você encontrar bugs, tiver sugestões de melhorias, quiser adicionar exemplos ou ajudar a documentar o projeto, fique à vontade para abrir uma issue ou enviar um pull request.
+
+A ideia é manter a biblioteca acessível, útil para aprendizado e aberta para evolução colaborativa.
+
 Cada módulo faz o mesmo papel que o equivalente em Python (Keras/TensorFlow), só traduzido para C++, com nomes em português.
 
 O primeiro projeto que usa a biblioteca é a previsão de gasto de bateria: dados a carga (kg) e a distância (km), o modelo prevê quantos % de bateria a viagem gasta.
