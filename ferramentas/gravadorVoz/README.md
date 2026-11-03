@@ -175,6 +175,6 @@ Desenvolvido por **Bruno Maker**.
 
 - GitHub: https://github.com/brunomakeram
 - Perfil no XERJ Corpus Hub: https://hub.xerj.org/contributors/brunomakeram
-- Biblioteca Maker (treino de IA direto na ESP32, em C++): https://biblioteca-treino-ia-embarcados.netlify.app/
+- Biblioteca S-E-AI (treino de IA direto na MICRO, em C++): https://biblioteca-treino-ia-embarcados.netlify.app/
 
 © 2026 Bruno Maker. Todos os direitos reservados.
