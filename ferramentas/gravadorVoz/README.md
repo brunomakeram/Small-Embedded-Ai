@@ -44,11 +44,13 @@ Se o terminal disser que o `pip` não foi encontrado, use:
 
 ```
 py -m pip install pyserial
-
 ```
+
 ## Ver a versão:
 
+```
 py -m pip show pyserial
+```
 
 ## Ligação do microfone
 
@@ -103,7 +105,7 @@ WAV.
 
 1. Abra o exemplo `examples/Gravador/Gravador.ino` na Arduino IDE.
 2. Em **Ferramentas > Placa**, escolha **ESP32S3 Dev Module**.
-3. Em **Ferramentas > USB CDC On Boot**, escolha **Enabled**. Sem isso, a placa não envia o áudio pelo cabo USB e o gravador não funciona.
+3. Antes de gravar/carregar o código na placa, vá em **Ferramentas > USB CDC On Boot** e escolha **Enabled**. Essa opção é necessária para o envio do áudio pelo cabo USB e para o funcionamento do gravador Python.
 4. Em **Ferramentas > Porta**, escolha a porta COM da placa (exemplo: COM7).
 5. Clique em **Carregar** e espere terminar.
 6. **Feche o Monitor Serial** da Arduino IDE. Se ele ficar aberto, o script não consegue usar a porta.
@@ -111,6 +113,10 @@ WAV.
 Quando a placa recebe a letra `G` pela Serial, o LED pisca vermelho 3 vezes, fica **verde** e grava 2 segundos. Depois envia o WAV pelo cabo.
 
 ## Passo a passo: gravador (Python)
+
+A imagem abaixo mostra a referência visual da comunicação serial PySerial:
+
+![Referência visual do PySerial](../../imagens/PySerial.jpg)
 
 1. Abra o terminal na pasta `Gravador` e rode:
 
