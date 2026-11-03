@@ -1,376 +1,387 @@
-# S-E-AI: Biblioteca de treino para ia e embarcados
+# Maker
 
-Biblioteca em C++ para treinar e usar modelos de Machine Learning direto no microcontrolador ESP32, PICO, STM32 BLUE PILL, sem converter modelo de outro lugar. O treino acontece no próprio chip, com dados guardados na memória flash (LittleFS).
+Biblioteca C++ para treinar e executar redes neurais em microcontroladores
+compatíveis com Arduino.
 
-## Site da biblioteca
-[Small Embedded Ai](https://small-embedded-ai.netlify.app/)
+## Uso
 
-## Open Source e contribuições
-
-Este projeto é open source e aceita contribuições da comunidade. Se você encontrar bugs, tiver sugestões de melhorias, quiser adicionar exemplos ou ajudar a documentar o projeto, fique à vontade para abrir uma issue ou enviar um pull request.
-
-A ideia é manter a biblioteca acessível, útil para aprendizado e aberta para evolução colaborativa.
-
-Cada módulo faz o mesmo papel que o equivalente em Python (Keras/TensorFlow), só traduzido para C++, com nomes em português.
-
-O primeiro projeto que usa a biblioteca é a previsão de gasto de bateria: dados a carga (kg) e a distância (km), o modelo prevê quantos % de bateria a viagem gasta.
-
-## Instalação
-
-1. Baixe o `.zip` da biblioteca.
-2. Na Arduino IDE: Sketch > Incluir Biblioteca > Adicionar biblioteca .ZIP.
-3. Selecione a placa ESP32 (core ESP32 Arduino v2.x ou superior, que traz o LittleFS).
-4. No código: `#include <Modelo.h>`
-
-O exemplo completo está em Arquivo > Exemplos > Maker > Maker.
-
-## Como funciona a conta
-
-O modelo é uma regressão linear múltipla:
-
-```
-gasto = (w1 * carga) + (w2 * distancia) + b
-```
-
-- `w1`, `w2`: pesos. Dizem o quanto cada entrada pesa no resultado.
-- `b`: viés. Ajuste de base da conta.
-
-O treino procura os valores de `w1`, `w2` e `b` que deixam o erro (MSE) o menor possível.
-
-Exemplo com pesos já treinados `w1 = 0.5`, `w2 = 4.0`, `b = -2.0`, para 10 kg e 5 km:
-
-```
-0.5 * 10  =  5.0
-4.0 * 5   = 20.0
-5.0 + 20.0 - 2.0 = 23.0   → o modelo diz que a viagem gasta 23% da bateria
-```
-
-## Mapa dos módulos
-
-| Módulo | Equivalente no Keras | Papel |
-|---|---|---|
-| Modelo | `Model` | Junta tudo e roda o fluxo completo |
-| Compilar | `model.compile()` | Prepara a rede e o otimizador |
-| Aprendizagem | `model.fit()` (chamada) | Ponto de entrada do treino |
-| Epocas | `epochs` | Laço das épocas |
-| Treinar | lotes do `fit` | Percorre os lotes dentro de uma época |
-| Gradientes | `tf.GradientTape` | Derivadas do erro |
-| Perdas | `keras.losses` | Cálculo do erro (MSE) |
-| Adam | `keras.optimizers.Adam` | Atualiza pesos e viés |
-| Neuronios | `layers.Dense` | Pesos, viés e inicialização |
-| Prever | `model.predict()` | Calcula a previsão |
-| Dataset | `DataFrame` | Guarda os dados na RAM |
-| Armazenamento | leitura de CSV | Lê e grava o CSV na flash |
-| Verbose | `verbose` | Lê números e mostra resultados no Serial |
-
-Fluxo de um treino:
-
-```
-Modelo.executar()
-  Armazenamento.lerDataset()        flash → Dataset (RAM)
-  Compilar.configurar()             Neuronios.inicializar() + Adam.inicializar()
-  Aprendizagem.treinarModelo()
-    Epocas.executar()               repete N épocas
-      embaralha os índices
-      Treinar.executarLotes()       lotes de 32 amostras
-        Gradientes.processarAmostraLote()   (usa Prever)
-        Perdas.calcularMSE()
-        Adam.atualizarParametros()
-  Prever.calcular()                 previsão final
-  Armazenamento.gravarRegistro()    salva a nova linha no CSV
-```
-
----
-
-## Modelo
-
-Classe que faz tudo de uma vez. Ideal para uso rápido.
+O modelo recebe as amostras de treinamento como matrizes: uma linha por amostra
+e uma coluna por característica ou saída. O terceiro parâmetro é a entrada usada
+para a previsão depois do treinamento.
 
 ```cpp
-#include <Modelo.h>
+#include <Seai.h>
 
-Modelo modelo;
+Modelo::Modelo modelo;
 
-void loop() {
-    modelo.executar();
-}
-```
+const std::vector<std::vector<float>> entradas = {
+    {0.0f, 0.0f},
+    {0.0f, 1.0f},
+    {1.0f, 0.0f},
+    {1.0f, 1.0f}
+};
 
-`executar()` não recebe parâmetros. Os ajustes do treino são atributos que você muda antes de chamar:
+const std::vector<std::vector<float>> saidas = {
+    {0.0f},
+    {1.0f},
+    {1.0f},
+    {0.0f}
+};
 
-| Atributo | O que controla | Padrão |
-|---|---|---|
-| `taxaAprendizado` | tamanho do passo do Adam | `0.05` |
-| `epocas` | quantas passadas pelo dataset | `500` |
-| `tamanhoLote` | amostras por lote | `32` |
-
-```cpp
-Modelo modelo;
+const std::vector<float> entradaPrevisao = {1.0f, 0.0f};
 
 void setup() {
-    modelo.taxaAprendizado = 0.01f;
-    modelo.epocas = 300;
+    Serial.begin(115200);
+    modelo.executar(entradas, saidas, entradaPrevisao);
 }
 ```
 
-O que `executar()` faz:
+`executar` retorna `false` e informa o erro pelo Serial quando as dimensões ou os
+parâmetros não são válidos. O método de resultados exibe somente a perda final.
 
-1. Lê o CSV `/Bateria.csv`.
-2. Pede carga e distância pelo Serial.
-3. Valida os limites (carga de 1 a 100 kg, distância de 1 a 9 km). Fora disso, não treina e não salva.
-4. Treina com os valores dos atributos acima.
-5. Prevê o gasto. Se der fora de 0% a 100%, descarta o dado.
-6. Se estiver certo, grava a nova linha no CSV e mostra o relatório.
+## Logs do treino (Verbose)
 
-Os limites e o caminho do CSV estão dentro do `Modelo.h`. Para outro projeto, é ali que se muda.
-
----
-
-## Compilar
-
-Prepara o modelo para treinar: escolhe a rede e o otimizador.
-
-Atributos:
-- `neuronios` (classe `Neuronios`): pesos e viés.
-- `otimizador` (classe `Adam`): otimizador.
-
-Método:
-- `void configurar(float taxaAprendizado = 0.05f, float beta1 = 0.9f, float beta2 = 0.999f, float eps = 1e-7f)`: inicializa `neuronios` e o `otimizador`. Todos os parâmetros são opcionais.
-  - `taxaAprendizado`: tamanho do passo. Menor aprende mais devagar e estável, maior aprende mais rápido mas pode oscilar.
-  - `beta1`, `beta2`, `eps`: parâmetros do Adam. Na maioria dos casos não precisa mexer.
+As opções de log podem ser configuradas separadamente no modelo. Todas começam
+desativadas:
 
 ```cpp
-Compilar modelo;
-modelo.configurar();        // taxa 0.05
-modelo.configurar(0.01f);   // taxa 0.01
-// depois do treino: modelo.neuronios.pesos[0], modelo.neuronios.vies
+modelo.verbose.mostrarConfiguracao = true;
+modelo.verbose.mostrarNumeroEpoca = true;
+modelo.verbose.mostrarPerdaPorEpoca = false;
+modelo.executar(entradas, saidas, entradaPrevisao);
 ```
 
----
+`mostrarConfiguracao` registra os parâmetros configurados, `mostrarNumeroEpoca`
+registra o número de cada época e `mostrarPerdaPorEpoca` registra sua perda.
+Esses logs não incluem entradas, saídas, pesos, vieses ou previsões; o método de
+resultados continua exibindo apenas a perda final.
 
-## Aprendizagem
+## Configuração da rede
 
-Ponto de entrada do treino. Chama o módulo `Epocas`.
+- `taxaAprendizado`, `epocas` e `tamanhoLote` ajustam o treinamento.
+- `neuroniosPorCamada` configura as camadas ocultas; seu padrão é `{8}`.
+- Cada camada aceita de 1 a 64 neurônios. A camada de saída é dimensionada
+  automaticamente conforme o número de saídas dos dados de treinamento.
+- A classe `Camadas::Camadas` organiza instâncias de `Neuronios::Neuronios`; cada
+  instância armazena os pesos e vieses de uma camada.
 
-- `float treinarModelo(Dataset &dados, Compilar &modelo, int totalEpocas, int tamanhoLote = 32)`
-  - `dados`: dataset já lido da flash.
-  - `modelo`: objeto `Compilar` já configurado.
-  - `totalEpocas`: quantas passadas completas pelo dataset (ex.: `500`).
-  - `tamanhoLote`: amostras por lote (opcional, padrão `32`).
-  - Retorna: o MSE final.
+As demais classes também ficam em namespaces com o nome da classe. Por exemplo:
 
 ```cpp
-Aprendizagem aprendizagem;
-float perdas = aprendizagem.treinarModelo(bateria, modeloCompilado, 500);
-float perdas2 = aprendizagem.treinarModelo(bateria, modeloCompilado, 500, 16);
+#include <Armazenamento/Armazenamento.h>
+#include <Dataset/Dataset.h>
+
+Dataset::Dataset dados;
+Armazenamento::Armazenamento armazenamento;
 ```
 
----
+Esse padrão também se aplica a `Aprendizagem::Aprendizagem`,
+`Compilar::Compilar`, `Epocas::Epocas`, `Gradientes::Gradientes`,
+`Perdas::Perdas`, `Prever::Prever` e `Treinar::Treinar`. `Adam::Adam`,
+`Camadas::Camadas`, `Modelo::Modelo` e `Verbose::Verbose` já seguem esse padrão.
 
-## Epocas
+## Exemplos por arquivo e classe
 
-Controla o laço das épocas.
+Os exemplos abaixo mostram como incluir cada header e chamar os principais
+métodos ou acessar os dados oferecidos por sua classe. Os componentes de treino
+de baixo nível são apresentados para integração personalizada; para o uso
+habitual, prefira a interface `Modelo::Modelo` descrita acima.
+Cada bloco é um fragmento independente: coloque instruções executáveis dentro
+de `setup()`, `loop()` ou de outra função do seu sketch. O exemplo de `Gravador`
+já mostra a estrutura completa com `setup()` e `loop()`.
 
-- `float executar(int epochs, Dataset &dados, Compilar &modelo, int tamanhoLote = 32)`
-  - A cada época, embaralha a ordem das amostras (Fisher-Yates, usando `esp_random()`) e chama `Treinar.executarLotes()`.
-  - `tamanhoLote`: amostras por lote. Valor menor que 1 vira 1.
-  - Retorna: o MSE da última época.
+### `src/Adam/Adam.h` — `Adam::Adam`
 
-Exemplo: o dataset padrão tem 179 amostras. Com lote 32, cada época tem 6 lotes (5 de 32 e 1 de 19). Com lote 16, são 12 lotes.
-
-Normalmente você não chama `Epocas` direto, usa a `Aprendizagem`.
-
----
-
-## Treinar
-
-Percorre os lotes de uma época. Uso interno.
-
-- `float executarLotes(Dataset &dados, const std::vector<int> &indices, int tamanho_lote, Compilar &modelo, Gradientes &gradientesCalc, Perdas &perdasCalc, Prever &previsor)`
-  - `indices`: ordem embaralhada das amostras.
-  - `tamanho_lote`: quantas amostras por lote (32).
-  - Para cada lote: soma os gradientes das amostras, calcula o MSE do lote e chama o `Adam` para atualizar os pesos.
-  - Retorna: a soma da perda da época (já ponderada pelo tamanho de cada lote). Quem divide pelo total de amostras é a `Epocas`.
-
----
-
-## Gradientes
-
-Calcula as derivadas do erro para uma amostra e acumula nos vetores.
-
-- `void processarAmostraLote(float carga, float distancia, float gastoReal, const float *pesos, float vies, float *gradientes, float &somaErroQuadrado, Prever &previsor)`
-  - `gradientes`: vetor de 3 posições `[dw1, dw2, db]`, acumulado a cada amostra.
-  - `somaErroQuadrado`: acumula `erro²` do lote.
-
-As contas:
-
-```
-erro = previsto - real
-dw1 += 2 * erro * carga
-dw2 += 2 * erro * distancia
-db  += 2 * erro
-```
-
-Exemplo: carga 10, distância 5, gasto real 22, com `w1 = 0.5`, `w2 = 4.0`, `b = -2.0`:
-
-```
-previsto = 23.0
-erro     = 23.0 - 22.0 = 1.0
-dw1 = 2 * 1.0 * 10 = 20
-dw2 = 2 * 1.0 * 5  = 10
-db  = 2 * 1.0      = 2
-erro²    = 1.0
-```
-
----
-
-## Perdas
-
-Funções de perda (o erro do modelo).
-
-- `float calcularMSE(float somaErrosQuadrados, int totalAmostras)`
-  - Retorna a média dos erros ao quadrado. Se `totalAmostras <= 0`, retorna `0`.
-
-Exemplo: soma dos erros² = 12.5 em 5 amostras → MSE = 2.5.
+Inicialize o otimizador e aplique uma atualização aos dois pesos e ao viés:
 
 ```cpp
-Perdas perdas;
-float mse = perdas.calcularMSE(12.5f, 5);   // 2.5
+#include <Adam/Adam.h>
+
+Adam::Adam adam;
+float pesos[2] = {0.1f, 0.2f};
+float vies = 0.0f;
+float gradientes[3] = {0.3f, -0.1f, 0.2f};
+
+adam.inicializar(0.05f);
+adam.atualizarParametros(pesos, vies, gradientes, 1);
 ```
 
----
+### `src/Aprendizagem/Aprendizagem.h` — `Aprendizagem::Aprendizagem`
 
-## Adam
-
-Otimizador. Ajusta `w1`, `w2` e `b` usando a média dos gradientes (1º momento) e a média dos gradientes ao quadrado (2º momento).
-
-Atributos:
-- `taxaAprendizado`: tamanho do passo (lr).
-- `decaimentoPrimeiroMomento`: beta1.
-- `decaimentoSegundoMomento`: beta2.
-- `margemEstabilidadeNumerica`: eps, evita divisão por zero.
-- `numeroAtualizacoes`: quantas vezes já atualizou (o `t` da fórmula).
-- `mediaMovelGradientes[3]` e `mediaMovelGradientesQuadrados[3]`: memória de cada parâmetro (`w1`, `w2`, `b`).
-
-Métodos:
-- `void inicializar(float lr = 0.05f, float beta1 = 0.9f, float beta2 = 0.999f, float eps = 1e-7f)`: define os parâmetros e zera a memória.
-- `void atualizarParametros(float *pesos, float &vies, float *gradientes, int numeroAmostrasLote)`
-  - Divide os gradientes pelo tamanho do lote (média), aplica a correção de viés dos momentos e atualiza `pesos[0]`, `pesos[1]` e `vies`.
-
-Exemplo numérico, primeira atualização (`t = 1`, `lr = 0.05`): o passo efetivo de cada parâmetro é de aproximadamente 0.05, na direção oposta ao gradiente. Nas atualizações seguintes o passo se ajusta conforme o histórico dos gradientes.
-
----
-
-## Neuronios
-
-Guarda os parâmetros da rede (equivalente a uma camada `Dense` com 2 entradas e 1 saída).
-
-Atributos:
-- `float pesos[2]`: `[w1, w2]`.
-- `float vies`: `b`.
-
-Métodos:
-- `void inicializar()`: sorteia os pesos pelo método Glorot/Xavier e zera o viés.
-- `float gerarNumeroAleatorio()`: devolve um número entre 0 e 1 usando o gerador de hardware do ESP32 (`esp_random()`).
-
-Exemplo: com 2 entradas e 1 saída, o limite Glorot é `sqrt(6 / 3) ≈ 1.414`. Cada peso começa sorteado entre `-1.414` e `+1.414`.
-
----
-
-## Prever
-
-Faz a inferência: aplica os parâmetros já treinados em uma entrada.
-
-- `float calcular(float carga, float distancia, const float *pesos, float vies)`
-  - Retorna: `pesos[0] * carga + pesos[1] * distancia + vies`.
+Passe um dataset e um modelo configurado para treinar por várias épocas:
 
 ```cpp
-Prever previsor;
-float gasto = previsor.calcular(
-    10.0f,                          // carga (kg)
-    5.0f,                           // distância (km)
-    modeloCompilado.neuronios.pesos,
-    modeloCompilado.neuronios.vies
+#include <Aprendizagem/Aprendizagem.h>
+#include <Compilar/Compilar.h>
+#include <Dataset/Dataset.h>
+
+Dataset::Dataset dados;
+dados.carga.push_back(1.0f);
+dados.distancia.push_back(2.0f);
+dados.gasto.push_back(3.0f);
+
+Compilar::Compilar modelo;
+modelo.neuronios.configurar(2, 1);
+modelo.configurar();
+
+Aprendizagem::Aprendizagem aprendizagem;
+float perda = aprendizagem.treinarModelo(dados, modelo, 10, 1);
+```
+
+### `src/Armazenamento/Armazenamento.h` — `Armazenamento::Armazenamento`
+
+Monte o LittleFS, leia o CSV para um dataset e acrescente um registro:
+
+```cpp
+#include <Armazenamento/Armazenamento.h>
+#include <Dataset/Dataset.h>
+
+Armazenamento::Armazenamento armazenamento;
+Dataset::Dataset dados;
+const char *caminho = "/dados.csv";
+
+if (armazenamento.montar(caminho)) {
+    armazenamento.lerDataset(caminho, dados);
+    armazenamento.gravarRegistro(caminho, 5.0f, 2.0f, 7.0f);
+}
+```
+
+### `src/Camadas/Camadas.h` — `Camadas::Camadas`
+
+Adicione camadas e acesse uma delas pela ordem de inserção:
+
+```cpp
+#include <Camadas/Camadas.h>
+
+Camadas::Camadas camadas;
+camadas.adicionar(2, 8);
+camadas.adicionar(8, 1);
+
+camadas[0].inicializar();
+std::size_t quantidade = camadas.tamanho();
+```
+
+### `src/Compilar/Compilar.h` — `Compilar::Compilar`
+
+Configure os neurônios e o otimizador agrupados pelo componente:
+
+```cpp
+#include <Compilar/Compilar.h>
+
+Compilar::Compilar modelo;
+modelo.neuronios.configurar(2, 1);
+modelo.configurar(0.01f);
+```
+
+### `src/Conversor/Conversor.h` — `Conversor::Conversor`
+
+Converta um valor `float` armazenado em bytes para um inteiro de 16 bits:
+
+```cpp
+#include <Conversor/Conversor.h>
+#include <cstring>
+
+Conversor::Conversor conversor(Conversor::Conversor::FLOAT32);
+float valor = 23.6f;
+uint8_t entrada[sizeof(valor)];
+uint8_t saida[2];
+std::memcpy(entrada, &valor, sizeof(valor));
+
+bool convertido = conversor.converterDado(
+    Conversor::Conversor::INT16, entrada, saida, 1
 );
-// com w1=0.5, w2=4.0, b=-2.0 → 23.0
 ```
 
----
+Para textos, informe a largura de cada elemento ao chamar `converterDado`;
+`larguraMinima` pode calcular a largura necessária para uma lista de palavras.
 
-## Dataset
+### `src/Dataset/Dataset.h` — `Dataset::Dataset`
 
-Guarda os dados na RAM, depois de lidos da flash.
-
-Atributos (vetores com uma posição por amostra):
-- `std::vector<float> carga`: kg.
-- `std::vector<float> distancia`: km.
-- `std::vector<float> gasto`: % de bateria gasta (o valor real, que o modelo tenta acertar).
-
-Também define `DATASET_PADRAO`: o CSV inicial (179 linhas, com cabeçalho `Carga,Distância,Gasto`) guardado em `PROGMEM`. Ele é gravado na flash só na primeira execução, quando o arquivo ainda não existe.
-
----
-
-## Armazenamento
-
-Lê e grava o CSV na memória flash (LittleFS). Todos os métodos recebem o caminho do arquivo, por exemplo `"/Bateria.csv"`.
-
-- `bool montar(const char *caminho)`
-  - Monta o LittleFS e, se o arquivo não existir, cria com o `DATASET_PADRAO`. Chame uma vez no `setup()`.
-- `bool lerDataset(const char *caminho, Dataset &dados)`
-  - Lê o CSV para o `Dataset`. Procura as colunas pelo nome no cabeçalho (`Carga`, `Distância`, `Gasto`), então a ordem delas não importa. Retorna `false` se o arquivo não abrir, se faltar coluna ou se não tiver nenhuma linha de dados.
-- `bool gravarRegistro(const char *caminho, float carga, float distancia, float gasto)`
-  - Acrescenta uma linha no fim do arquivo, sem apagar as anteriores.
-- `String formatarNumero(float valor)`
-  - Converte o número em texto para o CSV (ex.: `5` vira `"5.0"`).
+Os três vetores guardam valores relacionados pela mesma posição:
 
 ```cpp
-Armazenamento armazenamento;
-Dataset bateria;
+#include <Dataset/Dataset.h>
 
-armazenamento.montar("/Bateria.csv");
-armazenamento.lerDataset("/Bateria.csv", bateria);
-armazenamento.gravarRegistro("/Bateria.csv", 49.0f, 5.0f, 44.4f);
+Dataset::Dataset dados;
+dados.carga.push_back(5.0f);
+dados.distancia.push_back(2.0f);
+dados.gasto.push_back(7.0f);
 ```
 
----
+### `src/Epocas/Epocas.h` — `Epocas::Epocas`
 
-## Verbose
+Execute o treinamento de um modelo compilado por uma quantidade de épocas:
 
-Conversa com o usuário pelo Serial Monitor (115200 baud).
+```cpp
+#include <Compilar/Compilar.h>
+#include <Dataset/Dataset.h>
+#include <Epocas/Epocas.h>
 
-- `float lerNumero(const char *mensagem)`
-  - Mostra a mensagem, espera o usuário digitar e devolve o valor como `float`.
-- `void mostrarResultados(float carga, float distancia, float perdas, const float *pesos, float vies, float gasto_previsto)`
-  - Imprime o relatório final do treino.
+Dataset::Dataset dados;
+dados.carga.push_back(1.0f);
+dados.distancia.push_back(2.0f);
+dados.gasto.push_back(3.0f);
 
-Saída de exemplo:
+Compilar::Compilar modelo;
+modelo.neuronios.configurar(2, 1);
+modelo.configurar();
 
-```
-Digite a carga (kg): 49
-Digite a distância (km): 5
-
-===== RESULTADOS DO TREINAMENTO =====
-Carga inputada: 49.00 kg
-Distância inputada: 5.00 km
-Pesos Ajustados (w1, w2): [0.51986, 4.77821]
-Viés Ajustado (b): -4.96010
-MSE (Perda Final): 0.00023
--> Previsão de Gasto de Bateria: 44.40%
-=====================================
+Epocas::Epocas treinamento;
+float perda = treinamento.executar(10, dados, modelo, 1);
 ```
 
----
+### `src/Gradientes/Gradientes.h` — `Gradientes::Gradientes`
 
-## Estrutura da biblioteca
+Acumule gradientes para uma amostra usando os parâmetros atuais:
 
+```cpp
+#include <Gradientes/Gradientes.h>
+#include <Prever/Prever.h>
+
+Gradientes::Gradientes calculador;
+Prever::Prever previsor;
+float pesos[2] = {0.1f, 0.2f};
+float gradientes[3] = {0.0f, 0.0f, 0.0f};
+float somaErroQuadrado = 0.0f;
+
+calculador.processarAmostraLote(
+    1.0f, 2.0f, 3.0f, pesos, 0.0f, gradientes, somaErroQuadrado, previsor
+);
 ```
-Maker/
-  library.properties
-  README.md
-  src/          os módulos (.h)
-  examples/
-    Maker/
-      Maker.ino exemplo de uso
+
+### `src/Gravador/Gravador.h` — `Gravador::Gravador`
+
+No ESP32 compatível com o driver I2S e o LED RGB usados pela biblioteca,
+inicialize o gravador e chame `gravar()` no laço:
+
+```cpp
+#include <Gravador/Gravador.h>
+
+Gravador::Gravador gravador(2, 4, 5, 9);
+
+void setup() {
+    gravador.iniciar();
+}
+
+void loop() {
+    gravador.gravar();
+}
 ```
 
-As pastas `src` e `examples` são nomes fixos do formato de biblioteca do Arduino.
+O construtor recebe duração em segundos e os pinos BCLK, WS e DIN; a duração é
+limitada a 10 segundos.
+
+### `src/Modelo/Modelo.h` — `Modelo::Modelo`
+
+Configure camadas ocultas, treine com matrizes e informe uma entrada para
+previsão:
+
+```cpp
+#include <Seai.h>
+
+Modelo::Modelo modelo;
+modelo.neuroniosPorCamada = {8};
+
+std::vector<std::vector<float>> entradas = {{0.0f, 1.0f}, {1.0f, 0.0f}};
+std::vector<std::vector<float>> alvos = {{1.0f}, {1.0f}};
+std::vector<float> entradaPrevisao = {1.0f, 1.0f};
+
+bool executado = modelo.executar(entradas, alvos, entradaPrevisao);
+```
+
+### `src/Neuronios/Neuronios.h` — `Neuronios::Neuronios`
+
+Configure, inicialize e calcule as ativações de uma camada:
+
+```cpp
+#include <Neuronios/Neuronios.h>
+#include <vector>
+
+Neuronios::Neuronios camada;
+camada.configurar(2, 8);
+camada.inicializar();
+
+std::vector<float> entradas = {0.5f, 0.25f};
+std::vector<float> saidas;
+camada.calcular(entradas, saidas, true);
+```
+
+O terceiro argumento de `calcular` ativa `tanh` para camadas ocultas; use
+`false` para uma camada de saída linear.
+
+### `src/Perdas/Perdas.h` — `Perdas::Perdas`
+
+Calcule a perda média quadrática a partir da soma dos erros:
+
+```cpp
+#include <Perdas/Perdas.h>
+
+Perdas::Perdas perdas;
+float mse = perdas.calcularMSE(2.0f, 4);
+```
+
+### `src/Prever/Prever.h` — `Prever::Prever`
+
+Calcule uma previsão linear para carga e distância:
+
+```cpp
+#include <Prever/Prever.h>
+
+Prever::Prever previsor;
+float pesos[2] = {0.5f, 1.25f};
+float resultado = previsor.calcular(2.0f, 3.0f, pesos, 0.1f);
+```
+
+### `src/Treinar/Treinar.h` — `Treinar::Treinar`
+
+Para controlar o treinamento por lotes diretamente, prepare o dataset, o
+modelo e os componentes usados no cálculo:
+
+```cpp
+#include <Compilar/Compilar.h>
+#include <Dataset/Dataset.h>
+#include <Gradientes/Gradientes.h>
+#include <Perdas/Perdas.h>
+#include <Prever/Prever.h>
+#include <Treinar/Treinar.h>
+#include <vector>
+
+Dataset::Dataset dados;
+dados.carga.push_back(1.0f);
+dados.distancia.push_back(2.0f);
+dados.gasto.push_back(3.0f);
+
+Compilar::Compilar modelo;
+modelo.neuronios.configurar(2, 1);
+modelo.configurar();
+
+std::vector<int> indices = {0};
+Gradientes::Gradientes gradientes;
+Perdas::Perdas perdas;
+Prever::Prever previsor;
+Treinar::Treinar treinador;
+
+float perdaPonderada = treinador.executarLotes(
+    dados, indices, 1, modelo, gradientes, perdas, previsor
+);
+```
+
+### `src/Verbose/Verbose.h` — `Verbose::Verbose`
+
+Ative separadamente as categorias de log e encaminhe a configuração e os
+eventos do treinamento:
+
+```cpp
+#include <Verbose/Verbose.h>
+#include <vector>
+
+Verbose::Verbose verbose;
+verbose.mostrarConfiguracao = true;
+verbose.mostrarNumeroEpoca = true;
+verbose.mostrarPerdaPorEpoca = true;
+
+std::vector<int> camadasOcultas = {8};
+verbose.registrarConfiguracao(0.05f, 10, 4, camadasOcultas, 1);
+verbose.registrarEpoca(1);
+verbose.registrarPerdaEpoca(0.25f);
+```
