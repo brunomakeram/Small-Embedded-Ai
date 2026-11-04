@@ -3,7 +3,7 @@
 Biblioteca C++ para treinar e executar modelos de Machine Learning diretamente
 em placas ESP32 e Raspberry Pi Pico (RP2040). A Seai oferece redes neurais
 multicamada, conversão de dados, persistência de pesos e captura de áudio I2S.
-Esta é a versão 4.0.0; somente ESP32 e Raspberry Pi Pico (RP2040) são
+Esta é a versão 3.0.0; somente ESP32 e Raspberry Pi Pico (RP2040) são
 arquiteturas suportadas.
 
 **Site da biblioteca:** https://small-embedded-ai.netlify.app/
@@ -473,9 +473,9 @@ void loop()
 - [PySerial — documentação](https://pyserial.readthedocs.io/en/latest/)
 - [Glossário do projeto](GLOSSARIO.md)
 
-## Notas da versão 4.0.0
+## Notas da versão 3.0.0
 
-- Atualizada a identificação da biblioteca para a versão 4.0.0; a arquitetura
+- Atualizada a identificação da biblioteca para a versão 3.0.0; a arquitetura
   agora está limitada a ESP32 e Raspberry Pi Pico (RP2040).
 - Os exemplos de inferência e gravação passaram a receber entradas pelo
   Monitor Serial e informam o formato esperado.
