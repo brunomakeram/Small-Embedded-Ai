@@ -24,26 +24,36 @@ Seai é uma biblioteca C++ modular para treinar e executar redes neurais leves d
 - [Hardware e requisitos](#hardware-e-requisitos)
 - [Instalação](#instalação)
 - [Início rápido](#início-rápido)
-- [API do modelo e comportamento do treinamento](#api-do-modelo-e-comportamento-do-treinamento)
-- [Exemplos](#exemplos)
-- [Módulos opcionais](#módulos-opcionais)
-- [Estrutura do repositório](#estrutura-do-repositório)
-- [Entrada pelo Monitor Serial](#entrada-pelo-monitor-serial)
+- [Referência da API](#referência-da-api)
+  - [Modelo](#1-modelomodelo)
+  - [Adam](#2-adamadam)
+  - [Neuronios](#3-neuroniosneuronios)
+  - [Camadas](#4-camadascamadas)
+  - [Compilar](#5-compilarcompilar)
+  - [Aprendizagem e Epocas](#6-aprendizagem-e-epocas)
+  - [Treinar, Gradientes, Perdas e Prever](#7-treinar-gradientes-perdas-e-prever)
+  - [Conversor](#8-conversor)
+  - [Armazenamento CSV](#9-armazenamento-csv)
+  - [Persistência de pesos](#10-persistência-de-pesos)
+  - [Verbose](#11-verbose)
+  - [Gravador I2S](#12-gravador-i2s)
+  - [Detecção de placa](#13-detecção-de-placa)
+- [Exemplos do repositório](#exemplos-do-repositório)
 - [Limitações e recomendações](#limitações-e-recomendações)
 - [Contribuições](#contribuições)
 - [Licença e créditos](#licença-e-créditos)
 
 ## Recursos
 
-- Treinamento embarcado de redes neurais feed-forward a partir de matrizes numéricas de entradas e alvos.
-- Configuração do número de neurônios nas camadas ocultas, épocas, tamanho de lote e taxa de aprendizado.
+- Treinamento embarcado de redes neurais feed-forward a partir de matrizes numéricas.
+- Camadas ocultas configuráveis, épocas, lotes e taxa de aprendizado.
 - Otimização Adam e retropropagação do erro.
-- Inferência com `prever(...)` após o treinamento.
-- Cálculo do erro quadrático médio (MSE), disponível em `perdaFinal`.
-- Persistência opcional de pesos compatíveis, quando habilitada na compilação.
-- Leitura e gravação de conjuntos numéricos CSV via módulo de armazenamento em configurações compatíveis.
-- Captura de áudio PCM mono por I2S com o módulo gravador para ESP32-S3.
-- Logs e diagnósticos pela Serial com o módulo `Verbose`.
+- Inferência usando `prever(...)`.
+- Erro quadrático médio (MSE), disponível em `perdaFinal`.
+- Persistência opcional de pesos compatíveis.
+- Leitura e gravação de dados CSV via LittleFS nas configurações compatíveis.
+- Captura de áudio PCM mono por I2S no ESP32-S3.
+- Logs pela Serial por meio de `Verbose`.
 
 ## Hardware e requisitos
 
@@ -52,34 +62,24 @@ Seai é uma biblioteca C++ modular para treinar e executar redes neurais leves d
 | Arquiteturas suportadas | ESP32 e RP2040 (família Raspberry Pi Pico) |
 | Ambiente Arduino | Arduino IDE com a biblioteca Seai instalada |
 | Placas AVR | Não suportadas, incluindo Arduino Uno |
-| Gravador de voz | ESP32-S3, Arduino-ESP32 core 3.x e microfone INMP441 compatível |
+| Gravador de áudio | ESP32-S3, Arduino-ESP32 core 3.x e microfone INMP441 compatível |
 | Exemplo UF2 para RP2040 | Core Arduino-Pico e placa/perfil compatível com a configuração de flash selecionada |
 
-Antes de compilar, selecione o pacote de placas e o perfil corretos. Módulos e exemplos específicos de hardware podem ter requisitos adicionais de pinos, versão do core, flash ou comunicação serial; consulte o sketch correspondente e a documentação do gravador.
+Selecione o pacote de placas e o perfil corretos antes de compilar. Módulos específicos podem exigir configurações adicionais de pinos, versão do core, flash ou Serial.
 
 ## Instalação
 
-### Arduino IDE
-
-Instale a Seai como biblioteca Arduino usando o repositório ou a pasta da biblioteca e reinicie a IDE, se necessário. Os metadados estão em `library.properties`:
-
-- Nome: `Seai`
-- Versão: `3.0.0`
-- Arquiteturas declaradas: `esp32,rp2040`
-
-Abra um sketch individual em `examples/` e selecione a placa e a porta antes de compilar ou carregar.
-
-### Clonar o repositório
+Instale a Seai como biblioteca Arduino usando este repositório ou a pasta da biblioteca e reinicie a IDE, se necessário. Os metadados em `library.properties` declaram nome `Seai`, versão `3.0.0` e arquiteturas `esp32,rp2040`.
 
 ```bash
 git clone https://github.com/brunomakeram/Small-Embedded-Ai.git
 ```
 
-Instale ou coloque a biblioteca no diretório de bibliotecas Arduino de acordo com a configuração da sua IDE. Os sketches em `examples/` são independentes; abra o arquivo `.ino` na pasta do exemplo escolhido.
+Abra cada sketch individualmente em `examples/`, selecione a placa e a porta e siga as instruções específicas do exemplo.
 
 ## Início rápido
 
-O exemplo abaixo ilustra a API principal com duas características de entrada e uma saída. O sketch `examples/Seai/Seai.ino` também demonstra leitura pela Serial e tratamento de erros.
+O cabeçalho público `Seai.h` inclui os módulos compatíveis com a arquitetura detectada. A interface recomendada para a maioria dos projetos é `Modelo::Modelo`.
 
 ```cpp
 #include <Seai.h>
@@ -88,170 +88,443 @@ O exemplo abaixo ilustra a API principal com duas características de entrada e 
 Modelo::Modelo modelo;
 
 const std::vector<std::vector<float>> entradas = {
-    {0.0f, 0.0f},
-    {0.0f, 1.0f},
-    {1.0f, 0.0f},
-    {1.0f, 1.0f}
+    {0.0f, 0.0f}, {0.0f, 1.0f},
+    {1.0f, 0.0f}, {1.0f, 1.0f}
 };
-
 const std::vector<std::vector<float>> alvos = {
-    {0.0f},
-    {1.0f},
-    {1.0f},
-    {0.0f}
+    {0.0f}, {1.0f}, {1.0f}, {0.0f}
 };
 
 void setup() {
     Serial.begin(115200);
+    modelo.neuroniosPorCamada = {8};
+    modelo.epocas = 500;
+    modelo.tamanhoLote = 4;
 
-    // Treina com o conjunto informado e avalia a entrada indicada.
     if (!modelo.executar(entradas, alvos, {0.0f, 1.0f})) {
         Serial.println("Falha no treinamento.");
         return;
     }
 
-    // A inferência também pode ser solicitada após o treinamento.
-    const std::vector<float> previsao = modelo.prever({0.0f, 1.0f});
+    std::vector<float> previsao = modelo.prever({0.0f, 1.0f});
     if (!previsao.empty()) {
-        Serial.println(previsao[0], 4);
+        Serial.printf("Saída: %.4f; MSE: %.6f\n", previsao[0], modelo.perdaFinal);
     }
 }
 
 void loop() {}
 ```
 
-`executar(...)` recebe a matriz de entradas de treino, a matriz de saídas esperadas e um vetor de entrada a ser avaliado após o treinamento. Cada linha de entrada deve corresponder a uma linha de alvo; todas as linhas devem manter dimensões consistentes e conter valores finitos.
+Cada amostra de `entradas` deve possuir uma amostra correspondente em `alvos`. Todas as linhas precisam ter as mesmas dimensões e valores finitos. O vetor enviado a `prever` deve ter o mesmo número de características de cada entrada de treino.
 
-## API do modelo e comportamento do treinamento
+# Referência da API
 
-A classe pública principal é `Modelo::Modelo`, disponibilizada por `#include <Seai.h>`.
+Os nomes abaixo correspondem à API pública declarada nos cabeçalhos da versão 3.0.0. Exemplos de baixo nível são destinados a quem precisa compor componentes manualmente; para uso comum, prefira `Modelo::Modelo`, que encadeia automaticamente treinamento, camadas, gradientes e previsão.
 
-| Membro | Descrição |
-|---|---|
-| `taxaAprendizado` | Taxa positiva usada para inicializar o Adam. Padrão: `0.05f`. |
-| `epocas` | Número de passagens completas pelo conjunto de treino. Padrão: `500`. |
-| `tamanhoLote` | Número de amostras acumuladas por atualização dos parâmetros. Valores menores que 1 são tratados como 1 no treinamento. Padrão: `32`. |
-| `neuroniosPorCamada` | Quantidade de neurônios em cada camada oculta. A largura da saída é inferida dos alvos. |
-| `perdaFinal` | MSE calculado sobre o conjunto de treino após o treinamento. |
-| `verbose` | Configuração de logs exposta pelo módulo `Verbose`. |
-| `executar(entradas, alvos, entradaPrevisao)` | Valida dados, constrói a rede, treina, calcula a perda final, salva pesos se habilitado e avalia `entradaPrevisao`. Retorna `false` para dados ou configurações inválidos. |
-| `prever(entrada)` | Executa inferência usando o modelo atual. Retorna vetor vazio se o modelo não foi treinado ou se a entrada for inválida. |
+## 1. `Modelo::Modelo`
 
-### Notas de implementação
+Cabeçalho: `#include <Seai.h>` ou `#include <Modelo/Modelo.h>`.
 
-- A arquitetura das camadas ocultas é definida por `neuroniosPorCamada`; a largura da camada de saída vem dos vetores de alvo.
-- As camadas ocultas usam `tanh`; a camada de saída é linear, o que permite saídas para tarefas de regressão.
-- O treinamento usa retropropagação, atualizações Adam, embaralhamento da ordem das amostras e mini-lotes.
-- `perdaFinal` representa o erro quadrático médio calculado sobre o conjunto de dados fornecido.
-- Cada camada oculta aceita de 1 a 64 neurônios. A camada de saída também tem limite de 64 neurônios.
-- Entradas, alvos e valores de previsão devem ser finitos; as dimensões das amostras devem ser consistentes.
-- A implementação usa `std::vector` para dados e buffers de trabalho. Considere a RAM disponível ao escolher o tamanho do conjunto de dados e da rede.
+### Propriedades públicas
 
-Exemplo de configuração:
+| Propriedade | Tipo | Padrão | Significado |
+|---|---:|---:|---|
+| `taxaAprendizado` | `float` | `0.05f` | Tamanho da atualização do otimizador Adam. Deve ser finito e maior que zero. Valores maiores tendem a produzir atualizações maiores; ajuste empiricamente. |
+| `epocas` | `int` | `500` | Número de passagens completas pelo conjunto de treino. Deve ser pelo menos 1. |
+| `tamanhoLote` | `int` | `32` | Número máximo de amostras acumuladas antes de atualizar os parâmetros. Valor menor que 1 é convertido para 1. O último lote pode ser menor. |
+| `neuroniosPorCamada` | `std::vector<int>` | `{8}` | Número de neurônios de cada camada oculta, na ordem da entrada para a saída. Cada valor aceito deve estar entre 1 e 64. A largura de entrada e saída é inferida dos dados. |
+| `perdaFinal` | `float` | `0.0f` | MSE recalculado sobre todas as amostras depois do treino. |
+| `verbose` | `Verbose::Verbose` | opções desligadas | Controla os logs de configuração, número de épocas e perda por época. |
+
+### `bool executar(entradas, saidasEsperadas, entradaPrevisao)`
+
+Valida os dados, constrói a rede, treina, calcula `perdaFinal`, salva pesos se a opção de persistência estiver ligada e processa `entradaPrevisao`. Retorna `true` se o fluxo de treinamento for concluído e `false` se a validação de dados/configuração falhar.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `entradas` | `const std::vector<std::vector<float>>&` | Matriz de amostras. Cada linha contém as características de uma amostra. Não pode estar vazia. |
+| `saidasEsperadas` | `const std::vector<std::vector<float>>&` | Matriz de alvos, com o mesmo número de linhas de `entradas`; a largura de todas as linhas define a dimensão da saída. |
+| `entradaPrevisao` | `const std::vector<float>&` | Amostra a processar ao fim do treino. Deve ter a mesma largura de cada linha de `entradas`. |
+
+**Importante:** `executar` treina o modelo mesmo quando carrega pesos persistidos compatíveis. O carregamento não transforma o método em uma operação somente de inferência.
+
+### `std::vector<float> prever(entrada) const`
+
+Executa inferência com os parâmetros atualmente mantidos pelo objeto. `entrada` deve conter uma característica por entrada da rede e valores finitos. Se o modelo ainda não foi treinado ou a entrada for inválida, imprime uma mensagem na Serial e retorna um vetor vazio. A saída pode conter um ou mais valores, conforme o número de colunas dos alvos.
+
+### Exemplo: regressão `y = 2x`
 
 ```cpp
-modelo.neuroniosPorCamada = {8, 4}; // Duas camadas ocultas
-modelo.epocas = 300;
-modelo.tamanhoLote = 8;
-modelo.taxaAprendizado = 0.01f;
+#include <Seai.h>
+#include <vector>
+
+Modelo::Modelo modelo;
+const std::vector<std::vector<float>> x = {{0}, {1}, {2}, {3}};
+const std::vector<std::vector<float>> y = {{0}, {2}, {4}, {6}};
+
+void setup() {
+    Serial.begin(115200);
+    modelo.neuroniosPorCamada = {2};
+    modelo.epocas = 100;
+    modelo.tamanhoLote = 4;
+
+    if (modelo.executar(x, y, {3.0f})) {
+        const auto resultado = modelo.prever({3.0f});
+        if (!resultado.empty()) Serial.println(resultado[0], 4); // esperado próximo de 6
+    }
+}
+void loop() {}
 ```
 
-## Exemplos
+## 2. `Adam::Adam`
 
-Cada diretório contém um sketch Arduino independente. Os exemplos usam conjuntos compactos para demonstrar a biblioteca; os dados de treino e os resultados são ilustrativos, não um modelo geral pré-treinado.
+Cabeçalho: `#include <Adam/Adam.h>`. `Modelo` configura Adam internamente; use esta classe diretamente para controlar a atualização de vetores de parâmetros em fluxos de baixo nível.
+
+### Propriedades
+
+| Propriedade | Tipo | Padrão | Significado |
+|---|---:|---:|---|
+| `taxaAprendizado` | `float` | `0.05f` | Escala das atualizações. |
+| `decaimentoPrimeiroMomento` | `float` | `0.9f` | Decaimento da média móvel dos gradientes. |
+| `decaimentoSegundoMomento` | `float` | `0.999f` | Decaimento da média móvel dos gradientes ao quadrado. |
+| `margemEstabilidadeNumerica` | `float` | `1e-7f` | Termo adicionado ao denominador para estabilidade numérica. |
+| `numeroAtualizacoes` | `long` | `0` | Contador de atualizações aplicado na correção de viés dos momentos. |
+
+### Construtor e métodos
+
+- `Adam(taxaAprendizadoPadrao=0.05f, decaimentoPrimeiroMomentoPadrao=0.9f, decaimentoSegundoMomentoPadrao=0.999f, margemEstabilidadeNumericaPadrao=1e-7f)`: cria e inicializa o estado do otimizador. Os quatro parâmetros correspondem às propriedades da tabela.
+- `void inicializar(taxaAprendizadoPadrao, decaimentoPrimeiroMomentoPadrao, decaimentoSegundoMomentoPadrao, margemEstabilidadeNumericaPadrao)`: substitui os hiperparâmetros e zera contador e momentos. Use ao iniciar um novo treinamento ou quando mudar o tamanho do vetor de parâmetros.
+- `void atualizarParametros(std::vector<float>& parametros, const std::vector<float>& gradientes, int numeroAmostrasLote)`: atualiza `parametros` in-place. `gradientes` deve ter o mesmo tamanho e conter a soma dos gradientes do lote; o método divide pelo número de amostras. Se o tamanho for incompatível, vazio ou `numeroAmostrasLote <= 0`, a operação não atualiza os parâmetros e pode registrar erro pela Serial.
+
+Exemplo de chamada isolada (os gradientes são fornecidos pelo chamador):
+
+```cpp
+Adam::Adam adam(0.01f);
+std::vector<float> parametros = {0.5f, -0.2f};
+const std::vector<float> gradientes = {0.1f, -0.4f};
+adam.atualizarParametros(parametros, gradientes, 1);
+```
+
+## 3. `Neuronios::Neuronios`
+
+Cabeçalho: `#include <Neuronios/Neuronios.h>`. Representa uma camada totalmente conectada, com uma linha de pesos e um viés por neurônio.
+
+### Constantes, campos e métodos públicos
+
+- `NUMERO_NEURONIOS_MINIMO = 1`, `NUMERO_NEURONIOS_PADRAO = 8`, `NUMERO_NEURONIOS_MAXIMO = 64`.
+- `numeroEntradas`: quantidade de valores esperados na entrada da camada.
+- `numeroNeuronios`: número de saídas/neuronios da camada.
+- `pesosCamada`: matriz `[neurônio][entrada]` de pesos treináveis.
+- `viesCamada`: vetor de vieses, um por neurônio.
+- `pesos[2]` e `vies`: campos legados da API linear; não são a representação geral da matriz de pesos.
+- `configurar(int quantidadeEntradas, int quantidadeNeuronios=8)`: reserva dimensões e zera pesos/vieses. Limita a quantidade de neurônios ao intervalo de 1 a 64; valide `quantidadeEntradas >= 1` no chamador.
+- `float gerarNumeroAleatorio()`: devolve valor pseudoaleatório entre 0 e 1 usando a fonte fornecida pela plataforma.
+- `inicializar()`: inicializa pesos com escala Glorot e zera vieses. Se a camada não tiver entradas configuradas, usa configuração legada de duas entradas.
+- `calcular(const std::vector<float>& entradas, std::vector<float>& saidas, bool ativacaoTanh) const`: calcula soma ponderada mais viés para cada neurônio. Exige `entradas.size() == numeroEntradas`; limpa `saidas` em caso de dimensão incompatível. Se `ativacaoTanh` for `true`, aplica `tanh`; caso contrário, deixa a saída linear.
+
+Exemplo manual para uma camada com duas entradas e três neurônios:
+
+```cpp
+Neuronios::Neuronios camada;
+camada.configurar(2, 3);
+camada.inicializar();
+std::vector<float> saidas;
+camada.calcular({0.25f, 0.75f}, saidas, true);
+```
+
+## 4. `Camadas::Camadas`
+
+Cabeçalho: `#include <Camadas/Camadas.h>`. Contêiner ordenado de objetos `Neuronios::Neuronios`.
+
+- `void adicionar(int quantidadeEntradas, int quantidadeNeuronios)`: cria, configura, inicializa e acrescenta uma camada.
+- `void limpar()`: remove todas as camadas.
+- `std::size_t tamanho() const`: retorna o número de camadas.
+- `operator[](std::size_t indice)`: acesso por índice, na ordem em que `adicionar` foi chamado; a sobrecarga não constante permite alterar pesos. O chamador deve garantir que o índice esteja dentro de `tamanho()`.
+
+```cpp
+Camadas::Camadas rede;
+rede.adicionar(2, 4); // camada 0: duas entradas, quatro neurônios
+rede.adicionar(4, 1); // camada 1: quatro entradas, uma saída
+Serial.println((unsigned int)rede.tamanho());
+```
+
+## 5. `Compilar::Compilar`
+
+Cabeçalho: `#include <Compilar/Compilar.h>`. Agrupa uma camada `Neuronios::Neuronios` e seu otimizador `Adam::Adam` para o caminho de treino de baixo nível.
+
+- Campo `neuronios`: camada treinável.
+- Campo `otimizador`: estado Adam associado à camada.
+- `bool configurar(int quantidadeEntradas, int quantidadeSaidas, float taxaAprendizado=0.05f, float decaimentoPrimeiroMomento=0.9f, float decaimentoSegundoMomento=0.999f, float margemEstabilidadeNumerica=1e-7f)`: valida dimensões, configura/inicializa neurônios e reinicializa Adam; retorna `false` se a quantidade de entradas ou saídas não for válida, ou se saídas excederem 64.
+
+Os parâmetros Adam têm os mesmos significados descritos na seção [Adam](#2-adamadam).
+
+```cpp
+Compilar::Compilar compilado;
+if (!compilado.configurar(2, 1, 0.01f)) {
+    Serial.println("Dimensões inválidas");
+}
+```
+
+## 6. `Aprendizagem` e `Epocas`
+
+### `Aprendizagem::Aprendizagem::treinarModelo`
+
+Cabeçalho: `#include <Aprendizagem/Aprendizagem.h>`.
+
+```cpp
+float treinarModelo(
+    const std::vector<std::vector<float>>& entradas,
+    const std::vector<std::vector<float>>& saidasEsperadas,
+    Compilar::Compilar& modelo,
+    int quantidadeEpocas,
+    int tamanhoLote = 32);
+```
+
+Encaminha o treino para `Epocas::Epocas::executar` e retorna a perda MSE da última época. `entradas` e `saidasEsperadas` precisam ter linhas correspondentes e dimensões compatíveis com `modelo.neuronios`; `quantidadeEpocas` deve ser pelo menos 1. `tamanhoLote` é limitado a pelo menos 1 dentro do executor.
+
+### `Epocas::Epocas::executar`
+
+```cpp
+float executar(
+    int quantidadeEpocas,
+    const std::vector<std::vector<float>>& entradas,
+    const std::vector<std::vector<float>>& saidasEsperadas,
+    Compilar::Compilar& modelo,
+    int tamanhoLote = 32);
+```
+
+Valida épocas, dimensões, valores finitos e configuração da camada; embaralha índices das amostras a cada época e solicita o processamento dos lotes a `Treinar`. Retorna a perda final calculada. Em dados inválidos, imprime erro e retorna `0.0f` (portanto, não use apenas o valor zero para distinguir falha de uma perda zero).
+
+## 7. `Treinar`, `Gradientes`, `Perdas` e `Prever`
+
+Essas classes são componentes de baixo nível. Normalmente são chamadas pelo executor `Epocas`; use-as diretamente apenas quando precisar controlar o pipeline.
+
+### `Treinar::Treinar::executarLotes`
+
+Processa todos os lotes de uma época e atualiza os parâmetros via Adam. Recebe `entradas`, `saidasEsperadas`, uma permutação de `indices`, `tamanhoLote`, referências para `Compilar`, `Gradientes`, `Perdas` e `Prever`. Retorna a soma das perdas dos lotes ponderada pelas respectivas amostras; dados, índices ou dimensões inválidos geram mensagem Serial e retorno `0.0f`.
+
+### `Gradientes::Gradientes::processarAmostraLote`
+
+```cpp
+bool processarAmostraLote(
+    const std::vector<float>& entradas,
+    const std::vector<float>& saidasEsperadas,
+    const Neuronios::Neuronios& neuronios,
+    std::vector<std::vector<float>>& gradientesPesos,
+    std::vector<float>& gradientesVieses,
+    float& somaErroQuadrado,
+    Prever::Prever& previsor);
+```
+
+Calcula a previsão de uma amostra, acumula gradientes de pesos/vieses e soma os erros quadráticos em `somaErroQuadrado`. Os acumuladores devem estar previamente dimensionados para uma linha por saída e uma coluna por entrada. Retorna `false` se previsão, dimensões ou valores forem inválidos.
+
+### `Perdas::Perdas::calcularMSE`
+
+`float calcularMSE(float somaErrosQuadrados, int totalAmostras)` retorna `somaErrosQuadrados / totalAmostras`. Retorna `0.0f` se `totalAmostras <= 0`. No fluxo de baixo nível, passe o denominador adequado ao conjunto de valores cujo erro foi acumulado.
+
+### `Prever::Prever::calcular`
+
+`bool calcular(const std::vector<float>& entradas, const Neuronios::Neuronios& neuronios, std::vector<float>& saidas) const` executa uma camada linear (sem `tanh`), valida dimensão e finitude e preenche `saidas`. Em caso de erro, limpa o vetor e retorna `false`.
+
+## 8. `Conversor::Conversor`
+
+Cabeçalho: `#include <Conversor/Conversor.h>`. Converte buffers tipados, representados por bytes. A memória apontada por `entrada` e `saida` deve ter espaço suficiente para `quantidade` elementos com as larguras declaradas.
+
+### Tipos de dados
+
+| Constante | Valor | Bytes por elemento | Observação |
+|---|---:|---:|---|
+| `FLOAT32` | 0 | 4 | `float` de 32 bits; tipo de origem padrão quando o código de tipo recebido é inválido. |
+| `INT32` | 1 | 4 | Inteiro com sinal de 32 bits. |
+| `INT16` | 2 | 2 | Inteiro com sinal de 16 bits. |
+| `INT8` | 3 | 1 | Inteiro com sinal de 8 bits. |
+| `UINT8` | 4 | 1 | Inteiro sem sinal de 8 bits. |
+| `STRING` | 5 | largura configurada | Texto em campos de largura fixa. |
+
+`TETO_BYTES_TEXTO` é o limite de 100000 bytes usado nas validações para operações com texto.
+
+### Construtor e métodos
+
+- `Conversor(uint8_t tipoDadoEscolhido)`: define o tipo de origem do objeto. Código acima de `STRING` é substituído por `FLOAT32`.
+- `uint8_t tamanhoBytes() const`: retorna 4, 2, 1 ou 0 para texto/tipo sem tamanho fixo.
+- `bool converterDado(uint8_t destino, const uint8_t* entrada, uint8_t* saida, size_t quantidade, size_t larguraEntrada=0, size_t larguraSaida=0) const`: converte `quantidade` elementos do tipo de origem do objeto para `destino`.
+  - `destino`: uma das constantes de tipo acima; destino fora do intervalo é recusado.
+  - `entrada`/`saida`: buffers binários de origem e destino, sem conversão automática de endianness.
+  - `quantidade`: número de elementos a processar.
+  - `larguraEntrada`: bytes por elemento quando a origem é `STRING`.
+  - `larguraSaida`: bytes por elemento quando destino é `STRING`.
+  - Texto para texto copia o menor entre as larguras e preenche o restante da saída com zero. Texto numérico para tipo numérico é interpretado com `atof`; texto não numérico vira zero. Conversões para inteiros arredondam; `INT8`, `INT16` e `UINT8` são limitados à faixa representável.
+- `static size_t larguraMinima(const uint8_t* entrada, size_t quantidade, size_t larguraEntrada)`: calcula o comprimento da maior string em campos fixos, incluindo um byte adicional para terminador NUL. Cada campo deve ter até `larguraEntrada` bytes.
+
+### Exemplo: `float` para `int16_t`
+
+```cpp
+Conversor::Conversor conversor(Conversor::Conversor::FLOAT32);
+float valores[] = {1.2f, -2.7f};
+int16_t inteiros[2] = {};
+bool ok = conversor.converterDado(
+    Conversor::Conversor::INT16,
+    reinterpret_cast<const uint8_t*>(valores),
+    reinterpret_cast<uint8_t*>(inteiros),
+    2);
+```
+
+Garanta que os buffers estejam alinhados/adequadamente dimensionados para o tipo e a quantidade usados. O conversor trabalha sobre bytes e não substitui validação semântica ou normalização dos dados.
+
+## 9. Armazenamento CSV
+
+Cabeçalho: `#include <Armazenamento/Armazenamento.h>`. O módulo depende de LittleFS e é incluído condicionalmente pela Seai nas configurações suportadas (automaticamente habilitado para ESP32 pelas macros atuais).
+
+A classe `Armazenamento::Armazenamento` oferece:
+
+- `bool montar(const char* caminho)`: monta LittleFS e, se o caminho ainda não existir, cria-o com `DATASET_PADRAO`. `caminho` não pode ser nulo ou vazio. Como a montagem usa `LittleFS.begin(true)`, verifique o comportamento de formatação/recuperação do core antes de usar dados importantes.
+- `bool lerDados(const char* caminho, std::size_t quantidadeEntradas, std::vector<std::vector<float>>& entradas, std::vector<std::vector<float>>& saidas)`: lê um CSV com cabeçalho; as primeiras `quantidadeEntradas` colunas numéricas são entradas e as colunas restantes são saídas. Requer caminho válido, ao menos uma coluna de cada tipo, cabeçalho e uma ou mais amostras. Em sucesso substitui os vetores de saída.
+- `bool gravarDados(const char* caminho, const std::vector<String>& nomesEntradas, const std::vector<String>& nomesSaidas, const std::vector<std::vector<float>>& entradas, const std::vector<std::vector<float>>& saidas)`: grava/substitui o CSV com os nomes de colunas e matrizes informados. Exige nomes e dados não vazios, mesmo número de amostras, dimensões correspondentes aos nomes e valores finitos. Campos de cabeçalho com vírgula/aspas são escapados.
+- `bool gravarRegistro(const char* caminho, const std::vector<float>& entradas, const std::vector<float>& saidas)`: acrescenta uma linha ao CSV existente, validando a quantidade de colunas pelo cabeçalho. Não cria o arquivo nem o cabeçalho.
+
+Exemplo de ciclo de dados (ESP32 com suporte LittleFS):
+
+```cpp
+#include <Seai.h>
+
+Armazenamento::Armazenamento csv;
+std::vector<std::vector<float>> entradas, saidas;
+
+void setup() {
+    Serial.begin(115200);
+    if (!csv.montar("/treino.csv")) return; // cria dataset de exemplo se ausente
+    if (!csv.lerDados("/treino.csv", 2, entradas, saidas)) return;
+    // As matrizes lidas podem ser passadas a modelo.executar(...).
+}
+void loop() {}
+```
+
+O arquivo precisa ser CSV numérico (exceto cabeçalho), com o mesmo número de campos em todas as linhas. Números inválidos, `NaN` e infinitos são recusados.
+
+## 10. Persistência de pesos
+
+Cabeçalho: `#include <Pesos/Pesos.h>`. Namespace `PersistenciaPesos`; classe `Pesos`; enum `ResultadoCarregamento` com `PESOS_CARREGADOS`, `PESOS_AUSENTES` e `PESOS_INVALIDOS`.
+
+- `static bool salvar(const Camadas::Camadas& camadas)`: grava pesos e vieses. ESP32 usa LittleFS; o caminho interno é `/seai_pesos.csv`. No RP2040 usa EEPROM emulada, inicializada pelo módulo com 4096 bytes e gravada com `EEPROM.commit()`.
+- `static ResultadoCarregamento carregar(Camadas::Camadas& camadas)`: carrega somente quando versão, número de camadas, dimensões e valores são compatíveis; distingue pesos ausentes de inválidos.
+
+No uso normal, habilite a opção antes de incluir `Seai.h`:
+
+```cpp
+#define SALVAR_PESO SALVAR_PESO_LIGADO
+#include <Seai.h>
+```
+
+Sem essa definição, `SALVAR_PESO` assume `SALVAR_PESO_DESLIGADO`. A arquitetura e o perfil de flash determinam o espaço real disponível; dimensione a rede para caber na área persistente.
+
+## 11. `Verbose::Verbose`
+
+Acessível em `modelo.verbose` ou por `#include <Verbose/Verbose.h>`.
+
+| Campo | Padrão | Efeito quando `true` |
+|---|---:|---|
+| `mostrarConfiguracao` | `false` | Imprime taxa, épocas, lote, camadas ocultas e largura de saída no começo do treinamento. |
+| `mostrarNumeroEpoca` | `false` | Imprime o número de cada época concluída. |
+| `mostrarPerdaPorEpoca` | `false` | Imprime a perda por época. No `Modelo`, também ativa o cálculo da perda completa a cada época, aumentando o custo de execução. |
+
+Os métodos públicos `registrarConfiguracao(taxaAprendizado, epocas, tamanhoLote, neuroniosPorCamada, numeroSaidas)`, `registrarEpoca(epoca)`, `registrarPerdaEpoca(perda)` e `mostrarResultados(...)` são principalmente pontos de integração usados internamente pelo modelo. A perda final é impressa pela implementação atual mesmo sem ativar as opções de log.
+
+```cpp
+modelo.verbose.mostrarConfiguracao = true;
+modelo.verbose.mostrarNumeroEpoca = true;
+modelo.verbose.mostrarPerdaPorEpoca = false; // evita recalcular MSE a cada época
+```
+
+## 12. Gravador I2S
+
+Disponível condicionalmente em ESP32 com Arduino-ESP32 core 3.x. Cabeçalho: `#include <Gravador/Gravador.h>` (o include pode também ser feito pelo cabeçalho principal quando habilitado).
+
+### Construtor
+
+`Gravador::Gravador(int tempoGravacaoSegundos=2, int pinoBclk=4, int pinoWs=5, int pinoDin=9)`:
+
+- `tempoGravacaoSegundos`: duração em segundos, limitada automaticamente a 1–10.
+- `pinoBclk`: GPIO do clock BCLK.
+- `pinoWs`: GPIO word-select / WS.
+- `pinoDin`: GPIO de dados recebido do microfone.
+
+### Métodos
+
+- `void iniciar()`: configura Serial a 921600 baud, cabeçalho WAV PCM mono 16 kHz/16-bit e canal I2S de recepção. Chame uma vez em `setup()`.
+- `void gravar()`: retorna se não há dados disponíveis; consome um byte e inicia captura somente se esse byte for `G`. Captura a duração configurada e envia 44 bytes de cabeçalho WAV seguidos pelos dados PCM. No hardware esperado, usa também o LED RGB integrado do GPIO 48.
+
+```cpp
+#include <Arduino.h>
+#include <Gravador/Gravador.h>
+
+Gravador::Gravador gravador(2, 4, 5, 9);
+void setup() { gravador.iniciar(); }
+void loop() { gravador.gravar(); }
+```
+
+Requisitos adicionais e ligação do INMP441 estão em [`ferramentas/gravadorVoz/README.md`](ferramentas/gravadorVoz/README.md). O gravador Python incluso é documentado como ferramenta para Windows. Confirme pinos, USB CDC e taxa serial na placa utilizada.
+
+## 13. Detecção de placa
+
+`Placas/Placas.h` é incluído automaticamente por `Seai.h` e define as macros de plataforma:
+
+- `SEAI_ESP32`: definido como 1 quando detecta macros ESP32 compatíveis.
+- `SEAI_RP2040`: definido como 1 quando detecta `ARDUINO_ARCH_RP2040`.
+- `SEAI_TEM_GRAVADOR`: habilitado automaticamente para ESP32 quando `ESP_ARDUINO_VERSION_MAJOR >= 3`.
+- `SEAI_TEM_ARMAZENAMENTO`: habilitado automaticamente para ESP32.
+- `SALVAR_PESO_LIGADO` / `SALVAR_PESO_DESLIGADO`: valores de configuração; `SALVAR_PESO` usa desligado como padrão.
+
+A compilação gera erro quando nenhuma plataforma ou mais de uma plataforma é detectada. Em uma placa compatível cuja plataforma não seja identificada pelo core, a macro adequada deve ser definida **antes** do include de `Seai.h`, conforme a mensagem de compilação. `esp_random()` é fornecida pelo ESP32 ou adaptada via `random()` no RP2040 para inicialização/embaralhamento.
+
+## Exemplos do repositório
 
 | Exemplo | Sketch | Demonstração |
 |---|---|---|
-| Modelo básico Seai | [`examples/Seai/Seai.ino`](examples/Seai/Seai.ino) | Treinamento e inferência com duas características numéricas. |
-| Classificação de texto | [`examples/ClassificacaoPLN/ClassificacaoPLN.ino`](examples/ClassificacaoPLN/ClassificacaoPLN.ino) | Classificação com vocabulário explícito; não é um modelo geral de linguagem. |
-| Classificação de sentimentos | [`examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino`](examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino) | Demonstração compacta de classificação de sentimento. |
-| Previsão de bateria | [`examples/PrevisaoBateria/PrevisaoBateria.ino`](examples/PrevisaoBateria/PrevisaoBateria.ino) | Estimativa por regressão usando valores relacionados à bateria. |
-| Anomalia em hélice | [`examples/AnomaliaHelice/AnomaliaHelice.ino`](examples/AnomaliaHelice/AnomaliaHelice.ino) | Análise de anomalias demonstrativa com base na corrente do motor. |
-| Gravador I2S | [`examples/GravadorExemplo/GravadorExemplo.ino`](examples/GravadorExemplo/GravadorExemplo.ino) | Captura de áudio em hardware ESP32-S3 compatível. |
-| Persistência no RP2040 | [`examples/RP2040_16MB/RP2040_16MB.ino`](examples/RP2040_16MB/RP2040_16MB.ino) | Persistência de pesos e previsão em configuração RP2040 compatível. |
+| Modelo básico | [`examples/Seai/Seai.ino`](examples/Seai/Seai.ino) | Treinamento e inferência com duas características. |
+| Classificação de texto | [`examples/ClassificacaoPLN/ClassificacaoPLN.ino`](examples/ClassificacaoPLN/ClassificacaoPLN.ino) | Classificação baseada em vocabulário explícito, não um modelo geral de linguagem. |
+| Sentimentos | [`examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino`](examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino) | Demonstração de classificação de sentimento. |
+| Previsão de bateria | [`examples/PrevisaoBateria/PrevisaoBateria.ino`](examples/PrevisaoBateria/PrevisaoBateria.ino) | Estimativa/regressão com dados relacionados à bateria. |
+| Anomalia em hélice | [`examples/AnomaliaHelice/AnomaliaHelice.ino`](examples/AnomaliaHelice/AnomaliaHelice.ino) | Análise demonstrativa da corrente do motor. |
+| Gravador | [`examples/GravadorExemplo/GravadorExemplo.ino`](examples/GravadorExemplo/GravadorExemplo.ino) | Captura de áudio em ESP32-S3 compatível. |
+| Persistência RP2040 | [`examples/RP2040_16MB/RP2040_16MB.ino`](examples/RP2040_16MB/RP2040_16MB.ino) | Persistência de pesos e regressão `y = 2x`. |
 
-As imagens dos exemplos estão em [`imagens/`](imagens/). Abra cada sketch separadamente, configure placa e comunicação serial e siga as instruções exibidas por ele.
+Os dados são compactos e demonstrativos; a qualidade em uma aplicação real depende de dados representativos. Imagens estão em [`imagens/`](imagens/).
 
-### Exemplo de persistência no RP2040
+### RP2040 e EEPROM emulada
 
-O sketch `RP2040_16MB` habilita a persistência de pesos usando `SALVAR_PESO`. Ele demonstra a relação linear `y = 2x` e solicita um valor de previsão pelo Monitor Serial. O exemplo usa uma área de EEPROM emulada de 4096 bytes; os 16 MB de flash anunciados pela placa **não** são usados como uma alocação de EEPROM de 16 MB. Use o core Arduino-Pico e um perfil compatível com a configuração de flash selecionada.
-
-## Módulos opcionais
-
-### Persistência de pesos
-
-A persistência de pesos é opcional e pode ser habilitada no sketch por configuração de compilação, como demonstrado no exemplo RP2040. Quando ativada, o modelo tenta carregar pesos salvos compatíveis e grava os pesos finais após o treinamento. Se não houver pesos salvos ou se forem inválidos/incompatíveis, o treinamento continua com pesos inicializados novamente. Verifique a implementação de armazenamento e a capacidade disponível na placa de destino.
-
-### Armazenamento CSV
-
-O módulo `Armazenamento` oferece operações CSV sobre LittleFS, incluindo montagem do sistema de arquivos, leitura de colunas numéricas de entrada e saída, gravação de conjunto de dados e inclusão de registros. Na leitura, a quantidade de colunas de entrada é especificada; as colunas restantes são tratadas como saídas. O arquivo precisa conter cabeçalho e pelo menos uma amostra, com colunas numéricas consistentes.
-
-A inclusão do módulo depende da configuração de compilação. Antes de usá-lo, confirme se a arquitetura e o ambiente de destino habilitam o módulo e fornecem a implementação LittleFS esperada.
-
-### Gravador de áudio I2S
-
-O módulo de gravação é destinado a ESP32-S3 com Arduino-ESP32 core 3.x e microfone compatível com INMP441. A configuração padrão usa taxa de amostragem de 16 kHz, áudio WAV PCM mono de 16 bits e GPIOs BCLK/WS/DIN 4/5/9. A duração padrão é 2 segundos e é limitada ao intervalo de 1 a 10 segundos. É possível informar duração e pinos no construtor do gravador.
-
-O sketch aguarda o caractere `G` pela Serial; quando recebido, grava o áudio e envia o cabeçalho WAV seguido das amostras PCM. Confirme se a placa expõe os pinos selecionados e se o microfone está ligado ao canal utilizado pelo exemplo.
-
-Para ligação, configuração e uso da ferramenta complementar de gravação para Windows/Python, consulte [`ferramentas/gravadorVoz/README.md`](ferramentas/gravadorVoz/README.md). Essa ferramenta tem requisitos próprios; não presuma que as instruções se aplicam sem alterações a outros sistemas operacionais ou hardwares.
+O sketch `RP2040_16MB` habilita persistência por `SALVAR_PESO`. A EEPROM emulada reserva 4096 bytes; os 16 MB de flash não são usados como EEPROM de 16 MB. Use o core Arduino-Pico e um perfil compatível com o hardware/flash selecionado.
 
 ## Estrutura do repositório
 
 ```text
 .
-├── README.md                     # Documentação em português
-├── README.en.md                  # Documentação em inglês
-├── GLOSSARIO.md                  # Glossário em português
+├── README.md
+├── README.en.md
+├── GLOSSARIO.md
 ├── LICENSE
 ├── library.properties
-├── src/
-│   ├── Seai.h                    # Cabeçalho público principal
-│   ├── Adam/                     # Otimizador Adam
-│   ├── Aprendizagem/             # Rotinas de aprendizagem
-│   ├── Armazenamento/            # Armazenamento CSV via LittleFS
-│   ├── Camadas/                  # Camadas da rede
-│   ├── Compilar/                 # Suporte de compilação do modelo/treino
-│   ├── Conversor/                # Utilitários de conversão de dados
-│   ├── Epocas/                   # Controle de épocas
-│   ├── Gradientes/               # Gradientes e retropropagação
-│   ├── Gravador/                 # Gravador de áudio I2S
-│   ├── Modelo/                   # API do modelo
-│   ├── Neuronios/                # Implementação de neurônios
-│   ├── Perdas/                   # Funções de perda
-│   ├── Pesos/                    # Persistência de pesos
-│   ├── Placas/                   # Detecção e suporte de placas
-│   ├── Prever/                   # Inferência
-│   ├── Treinar/                  # Suporte ao treinamento
-│   └── Verbose/                  # Diagnósticos pela Serial
-├── examples/                     # Sketches Arduino independentes
-├── ferramentas/gravadorVoz/      # Ferramenta de gravação de amostras de voz
-└── imagens/                      # Imagens dos exemplos
+├── src/                 # API e módulos C++
+├── examples/            # sketches Arduino independentes
+├── ferramentas/         # ferramenta de gravação de voz
+└── imagens/             # imagens dos exemplos
 ```
-
-O ponto de inclusão público é `Seai.h`. Os módulos individuais são organizados sob `src/`; módulos específicos de hardware ou recursos podem ser incluídos condicionalmente conforme a configuração da compilação.
-
-## Entrada pelo Monitor Serial
-
-Vários exemplos recebem valores pelo Monitor Serial. Configure a velocidade indicada no sketch e selecione um final de linha aceito, normalmente **Nova linha** ou **NL e CR**. Informe valores no formato solicitado pelo exemplo; as entradas numéricas geralmente usam ponto como separador decimal. O gravador transmite áudio pela Serial a 921600 baud, portanto sua configuração difere dos exemplos básicos de ML.
 
 ## Limitações e recomendações
 
-- A Seai é destinada às arquiteturas ESP32 e RP2040 suportadas; não é compatível com placas AVR, como Arduino Uno.
-- O treinamento é executado no microcontrolador. Tempo de execução e consumo de RAM aumentam com o conjunto de dados, número de características, largura das camadas e quantidade de épocas.
-- Mantenha dimensões de rede e conjunto de treino adequados à memória e à capacidade de processamento da placa.
-- Prepare as características de entrada adequadamente para o problema. A biblioteca valida valores finitos e dimensões, mas não prepara nem normaliza automaticamente os dados.
-- Os conjuntos de exemplo são demonstrativos e não garantem acurácia. Use dados representativos e avalie o modelo de forma independente para a aplicação pretendida.
-- Pesos persistidos dependem da configuração de armazenamento; confirme capacidade e compatibilidade na placa real.
-- A captura de áudio depende da combinação especificada de ESP32-S3, versão do core, microfone e configuração de pinos.
+- O treinamento roda no microcontrolador; tempo e RAM aumentam com dados, características, camadas e épocas. Use dimensões compatíveis com os recursos da placa.
+- A biblioteca valida formato/dimensões e valores finitos, mas não normaliza os dados automaticamente.
+- Saída linear é adequada a regressão, mas tarefas de classificação podem exigir codificação de alvos e interpretação do resultado feita pela aplicação.
+- Exemplos não garantem acurácia. Avalie o modelo com amostras representativas e separadas do treino.
+- Persistência depende da configuração de armazenamento e do perfil da placa. Não presuma que a memória flash total esteja disponível para pesos.
+- O gravador requer a combinação de hardware, core, pinos e configuração Serial descrita nesta documentação.
 
 ## Contribuições
 
-Relatos de problemas, correções e melhorias podem ser enviados pelos fluxos de issues e pull requests do GitHub. Ao relatar um problema, informe o modelo da placa, versão do pacote/core, versão da Arduino IDE, sketch utilizado e a saída completa de compilação ou execução.
+Issues, correções e melhorias podem ser enviados pelo GitHub. Em relatos de erro, inclua placa, versão do core/pacote, Arduino IDE, sketch e saída completa de compilação ou execução.
 
 ## Licença e créditos
 
-Desenvolvido por **Bruno Maker**. Consulte [`LICENSE`](LICENSE) para conhecer os termos aplicáveis.
+Desenvolvido por **Bruno Maker**. Consulte [`LICENSE`](LICENSE) para os termos aplicáveis.
 
 - Repositório: [brunomakeram/Small-Embedded-Ai](https://github.com/brunomakeram/Small-Embedded-Ai)
-- Site do projeto: [small-embedded-ai.netlify.app](https://small-embedded-ai.netlify.app/)
+- Site: [small-embedded-ai.netlify.app](https://small-embedded-ai.netlify.app/)
