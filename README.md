@@ -1,17 +1,22 @@
 # Small Embedded AI (Seai)
 
-Biblioteca C++ para treinar e executar modelos em placas compatíveis com
-Arduino. A Seai oferece redes neurais multicamada, conversão de dados,
-persistência CSV em LittleFS e captura de áudio I2S.
+Biblioteca C++ para treinar e executar modelos de Machine Learning diretamente
+em placas ESP32 e Raspberry Pi Pico (RP2040). A Seai oferece redes neurais
+multicamada, conversão de dados, persistência de pesos e captura de áudio I2S.
+Esta é a versão 4.0.0; somente ESP32 e Raspberry Pi Pico (RP2040) são
+arquiteturas suportadas.
 
 **Site da biblioteca:** https://small-embedded-ai.netlify.app/
 
 ## Requisitos
 
 - Arduino IDE e a biblioteca Seai instalada.
-- Para os exemplos abaixo: ESP32-S3 e Arduino-ESP32 core 3.x.
-- Os 5 exemplos de IA desta página foram validados na ESP32-S3.
-- O gravador de áudio também requer microfone INMP441 compatível.
+- Placas suportadas pela biblioteca: ESP32 e Raspberry Pi Pico (RP2040).
+  Placas AVR, incluindo Arduino Uno, não são suportadas.
+- O gravador de áudio requer ESP32-S3, Arduino-ESP32 core 3.x e microfone
+  INMP441 compatível.
+- O exemplo de UF2 do Pico requer o core Arduino-Pico e uma placa RP2040
+  compatível com o perfil selecionado.
 
 ## O que a Seai pode fazer
 
@@ -22,11 +27,16 @@ embarcada; a qualidade depende dos dados coletados e da representatividade das
 amostras. Os classificadores de texto usam um vocabulário explícito, não um
 modelo de linguagem geral.
 
-## Exemplos testados na ESP32-S3
+## Exemplos e entrada pelo Monitor Serial
 
 Abra cada pasta como sketch independente na Arduino IDE. As referências abaixo
 apontam para imagens que poderão ser adicionadas à pasta `imagens/` do GitHub;
 o código executável fica nos links `.ino`.
+
+Os conjuntos de treino sintéticos continuam no código para demonstrar o
+treinamento. Os dados usados para a previsão/classificação de cada execução
+são informados pelo Monitor Serial; configure a velocidade indicada para cada
+exemplo e selecione final de linha `Nova linha` ou `NL e CR`.
 
 ### Previsão de bateria — regressão linear
 
@@ -34,12 +44,12 @@ o código executável fica nos links `.ino`.
 
 [Abrir o sketch PrevisaoBateria.ino](examples/PrevisaoBateria/PrevisaoBateria.ino)
 
-**Como montar os dados:** registre várias viagens. Cada amostra contém carga
-transportada em kg, distância percorrida em km e percentual de bateria gasto
-naquela viagem. Substitua as linhas sintéticas de `dadosFisicos` por medições
-reais. Mantenha o método de medição do percentual consistente e inclua viagens
-com cargas e distâncias variadas. O exemplo normaliza as duas entradas e o alvo
-antes do treino.
+**Entrada no Monitor Serial (115200 baud):** depois do treinamento, digite a
+carga transportada em kg e, em seguida, a distância em km, uma por linha
+(exemplo: `45.0` e `30.0`). Use ponto como separador decimal. O exemplo usa
+viagens sintéticas para treino; substitua `dadosFisicos` por medições reais
+quando adaptar o modelo. Cada amostra de treino contém carga, distância e
+percentual de bateria gasto.
 
 ### PLN — classificação de palavras
 
@@ -47,13 +57,13 @@ antes do treino.
 
 [Abrir o sketch ClassificacaoPLN.ino](examples/ClassificacaoPLN/ClassificacaoPLN.ino)
 
-**Como montar os dados:** adicione frases representativas a `frasesTreino` e
-um rótulo correspondente em `classesTreino`: `0` para remédio, `1` para resgate
-e `2` para mercadoria. Inclua quantidade e variedade semelhantes por classe.
-Adicione ao `vocabulario` palavras importantes para o seu domínio. O sketch
-transforma cada frase num vetor de presença de palavras usando `Conversor`.
-Palavras fora do vocabulário são ignoradas; o exemplo usa texto ASCII sem
-acentos.
+**Entrada no Monitor Serial (115200 baud):** após o treino, digite uma frase
+por linha para classificar. Digite `sair` para terminar. Exemplo:
+`socorro para acidente`. Use texto ASCII sem acentos; o vocabulário fixo
+reconhece palavras relacionadas a remédio, resgate e mercadoria, e ignora
+palavras que não estejam nele. Para adaptar o treinamento, edite
+`frasesTreino`, seus rótulos `classesTreino` (`0` remédio, `1` resgate,
+`2` mercadoria) e `vocabulario`.
 
 ### Classificação de sentimentos
 
@@ -61,12 +71,12 @@ acentos.
 
 [Abrir o sketch ClassificacaoSentimentos.ino](examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino)
 
-**Como montar os dados:** cada frase em `frasesTreino` precisa do rótulo na
-mesma posição em `classesTreino`: `0` para positivo, `1` para negativo e `2`
-para neutro. Use frases reais do seu contexto, incluindo variações de escrita,
-frases neutras e exemplos equilibrados entre classes. Amplie o `vocabulario`
-com palavras relevantes. A tokenização de demonstração usa ASCII sem acentos e
-ignora palavras que não estejam no vocabulário.
+**Entrada no Monitor Serial (115200 baud):** após o treino, digite uma frase
+por linha para classificar. Digite `sair` para terminar. Exemplo:
+`gostei muito`. Use texto ASCII sem acentos; o vocabulário fixo reconhece
+palavras positivas, negativas e neutras, e ignora palavras que não estejam
+nele. Para adaptar o treinamento, edite `frasesTreino`, seus rótulos
+`classesTreino` (`0` positivo, `1` negativo, `2` neutro) e `vocabulario`.
 
 ### Anomalia de hélice — análise da corrente do motor
 
@@ -74,15 +84,40 @@ ignora palavras que não estejam no vocabulário.
 
 [Abrir o sketch AnomaliaHelice.ino](examples/AnomaliaHelice/AnomaliaHelice.ino)
 
-**Como montar os dados:** primeiro colete uma série de leituras de corrente
-durante operação normal e preencha `correnteNormal`; o sketch calcula a média
-e o desvio-padrão dessa referência. Depois ajuste `correnteAtual` com a leitura
-que será avaliada e `NUMERO_DESVIOS_ANOMALIA` com o limite N desejado. Para
-treinar com outros motores, substitua `desviosNormalizados` e
-`rotulosAnomalia` por observações rotuladas: cada entrada é o desvio da corrente
-em relação à média, dividido pelo desvio-padrão e por N; use saída `0` para
-normal e `1` para anomalia. A regra direta N-sigma determina se a leitura está
-acima do limite; a classificação da Seai é uma estimativa aprendida adicional.
+**Entrada no Monitor Serial (115200 baud):** digite primeiro pelo menos duas
+leituras de corrente normal, em ampères, separadas por vírgula (exemplo:
+`2.00,2.04,1.98,2.03`). Depois digite a corrente atual, em ampères, numa linha
+(exemplo: `2.50`). Use ponto decimal. O sketch calcula média e desvio-padrão
+da referência; a regra N-sigma usa o limite definido por
+`NUMERO_DESVIOS_ANOMALIA`. O modelo de demonstração usa observações
+sintéticas rotuladas; para adaptá-lo, substitua `desviosNormalizados` e
+`rotulosAnomalia` com dados representativos.
+
+### Exemplo geral de modelo — XOR
+
+[Abrir o sketch Seai.ino](examples/Seai/Seai.ino)
+
+**Entrada no Monitor Serial (115200 baud):** após iniciar, digite dois valores
+entre `0` e `1`, um por linha (exemplo: `1` e `0`). O modelo treina com a tabela
+XOR incluída no exemplo e imprime a previsão para o par informado.
+
+### Teste de persistência no Pico
+
+[Abrir o sketch RP2040_16MB.ino](examples/RP2040_16MB/RP2040_16MB.ino)
+
+**Entrada no Monitor Serial (115200 baud):** digite um número para previsão
+(exemplo: `3.0`). O treino demonstra a relação `y = 2x`. O perfil da placa deve
+ser compatível com a flash de 16 MB; o exemplo usa 4096 bytes para EEPROM
+emulada.
+
+### Gravador de áudio
+
+[Abrir o sketch GravadorExemplo.ino](examples/GravadorExemplo/GravadorExemplo.ino)
+
+O exemplo é destinado às placas ESP32 compatíveis com a captura I2S e requer
+microfone INMP441. Abra o Monitor Serial em **921600 baud** e envie a letra
+`G` para iniciar a gravação. Para ligar o microfone, veja as instruções em
+[ferramentas/gravadorVoz/README.md](ferramentas/gravadorVoz/README.md).
 
 ## Uso da API de modelo
 
@@ -112,6 +147,9 @@ const std::vector<std::vector<float>> saidasEsperadas = {
 void setup()
 {
     Serial.begin(115200);
+#if !SEAI_ESP32
+    randomSeed(analogRead(A0));
+#endif
     std::vector<float> primeiraEntrada = entradas[0];
     if (modelo.executar(entradas, saidasEsperadas, primeiraEntrada)) {
         std::vector<float> previsao = modelo.prever({1.0f, 0.0f});
@@ -142,6 +180,7 @@ propriedades públicas permitem configurar o treino:
 | `epocas` | `int` | `500` | Quantas vezes percorrer o conjunto de treino. |
 | `tamanhoLote` | `int` | `32` | Quantas amostras acumulam gradientes antes de atualizar os parâmetros. |
 | `neuroniosPorCamada` | `std::vector<int>` | `{8}` | Número de neurônios em cada camada oculta; a saída é dimensionada pelos alvos. |
+| `perdaFinal` | `float` | `0.0` | Perda MSE do treino concluído; consulte depois de `executar`. |
 | `verbose` | `Verbose::Verbose` | opções desligadas | Controla os registros do treino. |
 
 `executar(entradas, saidasEsperadas, entradaPrevisao)` treina e retorna `true`
@@ -150,6 +189,56 @@ retorna um vetor vazio se o modelo ou a dimensão da entrada forem inválidos.
 Todas as amostras precisam ter dimensões consistentes e conter valores finitos.
 As camadas ocultas usam `tanh`; a camada de saída é linear, portanto aceita
 saídas contínuas para regressão.
+
+O número da época é registrado uma vez ao final de cada época. Para habilitar a
+persistência dos pesos, defina a opção antes de incluir a biblioteca:
+
+```cpp
+#define SALVAR_PESO SALVAR_PESO_LIGADO
+#include <Seai.h>
+```
+
+Por padrão, `SALVAR_PESO` é `SALVAR_PESO_DESLIGADO`. Quando ligada, a Seai tenta
+carregar os pesos salvos compatíveis antes do treino e grava os pesos finais
+uma vez após o treino. No ESP32, o arquivo CSV fica no LittleFS; no RP2040, os pesos são gravados em
+binário na EEPROM emulada do core. A EEPROM do RP2040 usa 4096 bytes; modelos
+que não couberem no espaço disponível não são gravados. Se as dimensões da rede
+mudarem, os pesos antigos são ignorados.
+
+No RP2040, inicialize o gerador aleatório no `setup()` antes do treino usando
+um pino analógico livre, por exemplo `randomSeed(analogRead(A0));`. O ESP32
+continua usando o gerador `esp_random()` nativo.
+
+### Instalar UF2 no Raspberry Pi Pico
+
+O projeto inclui um UF2 pronto em
+`examples/RP2040_16MB/RP2040_16MB.ino.uf2`. O procedimento de arrastar o UF2
+instala o firmware na placa; abra o sketch correspondente na Arduino IDE para
+usar o Monitor Serial.
+
+#### Caso 1 — usar o código pronto
+
+O arquivo UF2 pronto acompanha o projeto. Com a placa desconectada, mantenha
+pressionado o botão **BOOT**, conecte o cabo USB e solte o botão quando a
+unidade aparecer no computador. Arraste
+`examples/RP2040_16MB/RP2040_16MB.ino.uf2` para essa unidade. Não é necessário
+exportar o binário.
+
+#### Caso 2 — modificar o código
+
+1. Compile o sketch na Arduino IDE.
+2. Abra **Rascunho (Sketch) > Exportar binário compilado**.
+3. Abra a pasta `build` criada ao lado do arquivo `.ino`.
+4. Entre na pasta com o nome do RP2040 e copie o arquivo terminado em `.UF2`.
+5. Desconecte o USB da placa.
+6. Segure o botão **BOOT** e, mantendo-o pressionado, reconecte o USB.
+7. Cole (`Ctrl+V`) o arquivo UF2 na unidade/pasta `RPI` que aparecer.
+8. Grave novamente pela Arduino IDE. A porta da placa aparecerá; abra o
+   Monitor Serial em 115200 baud e use a entrada indicada no exemplo.
+
+No exemplo de persistência, selecione um perfil de placa compatível com flash
+de 16 MB. A placa deve usar o core Arduino-Pico e a EEPROM emulada reserva
+4096 bytes; os 16 MB de flash não são usados como espaço de EEPROM.
 
 ### API de baixo nível
 
@@ -383,3 +472,12 @@ void loop()
 - [Documentação Python — tutorial](https://docs.python.org/3/tutorial/)
 - [PySerial — documentação](https://pyserial.readthedocs.io/en/latest/)
 - [Glossário do projeto](GLOSSARIO.md)
+
+## Notas da versão 4.0.0
+
+- Atualizada a identificação da biblioteca para a versão 4.0.0; a arquitetura
+  agora está limitada a ESP32 e Raspberry Pi Pico (RP2040).
+- Os exemplos de inferência e gravação passaram a receber entradas pelo
+  Monitor Serial e informam o formato esperado.
+- Adicionadas instruções para instalar UF2 pronto no Pico ou exportar e gravar
+  um UF2 compilado após modificar o sketch.
