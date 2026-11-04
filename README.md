@@ -30,10 +30,22 @@ modelo de linguagem geral.
 ## Exemplos e entrada pelo Monitor Serial
 
 Abra cada pasta como sketch independente na Arduino IDE. As referências abaixo
-apontam para imagens que poderão ser adicionadas à pasta `imagens/` do GitHub;
-o código executável fica nos links `.ino`.
+apontam para imagens da pasta `imagens/` do GitHub; o código executável fica nos
+links `.ino`.
 
 Os conjuntos de treino sintéticos continuam no código para demonstrar o
 treinamento. Os dados usados para a previsão/classificação de cada execução
 são informados pelo Monitor Serial; configure a velocidade indicada para cada
 exemplo e selecione final de linha `Nova linha` ou `NL e CR`.
+
+### Teste de persistência no Raspberry Pi Pico (RP2040)
+
+![Exemplo RP2040](imagens/RP2040.jpg)
+
+[ Abrir o sketch RP2040_16MB.ino ](examples/RP2040_16MB/RP2040_16MB.ino)
+
+O exemplo demonstra persistência de pesos no Raspberry Pi Pico. Digite um
+número no Monitor Serial para obter uma previsão (por exemplo, `3.0`); o treino
+demonstra a relação `y = 2x`. Use o core Arduino-Pico e um perfil de placa
+compatível com a flash selecionada. A EEPROM emulada reserva 4096 bytes; os
+16 MB de flash não são usados como espaço de EEPROM.
