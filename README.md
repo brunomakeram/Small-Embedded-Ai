@@ -4,6 +4,14 @@
 
 **Treinamento e inferência de redes neurais diretamente em ESP32 e Raspberry Pi Pico (RP2040).**
 
+<div align="center">
+
+### Membro da comunidade AI Lounge
+
+[![AI Lounge Member](https://img.shields.io/badge/AI%20Lounge-Member-0b0f19?style=for-the-badge)](https://ai.lounge.ai)
+
+</div>
+
 [![Versão](https://img.shields.io/badge/versão-3.0.0-blue.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
 [![Plataformas](https://img.shields.io/badge/plataformas-ESP32%20%7C%20RP2040-orange.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
 [![Linguagem](https://img.shields.io/badge/linguagem-C%2B%2B-informational.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
