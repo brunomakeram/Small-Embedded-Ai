@@ -1,55 +1,54 @@
+<div align="center">
+
 # Small Embedded AI (Seai)
 
-Biblioteca C++ para treinar e executar modelos em placas compatíveis com
-Arduino. A Seai oferece redes neurais multicamada, conversão de dados,
-armazenamento de dados CSV em LittleFS no ESP32, transferência de pesos do
-modelo por Serial e captura de áudio I2S.
+Biblioteca C++ orientada a objetos para treinar e executar redes neurais diretamente em microcontroladores ESP32 e Raspberry Pi Pico.
 
-**Site da biblioteca:** https://small-embedded-ai.netlify.app/
+[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
+[![Platforms](https://img.shields.io/badge/platforms-ESP32%20%7C%20RP2040-orange.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
+[![Language](https://img.shields.io/badge/language-C%2B%2B-informational.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
+[![Arduino](https://img.shields.io/badge/framework-Arduino-00979D.svg?logo=arduino&logoColor=white)](https://www.arduino.cc/)
+[![Docs](https://img.shields.io/badge/docs-site-brightgreen.svg)](https://small-embedded-ai.netlify.app/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+[Português] · [English](README.en.md)
+
+</div>
+
+Seai oferece treinamento on-device, inferência, armazenamento opcional em CSV, persistência de pesos em LittleFS/EEPROM e transferência serial de modelos. A API pública usa o namespace `Seai` e foi revisada na versão 4.0.0.
+
+> Versão atual: **4.0.0**. A biblioteca foi validada para ESP32 e Raspberry Pi Pico (RP2040). AVR, incluindo Arduino Uno, não é suportado.
 
 ## Notas da versão 4.0.0 (V4)
 
 ### Removido
 
-- O dataset padrão `DATASET_PADRAO` e suas cópias internas foram removidos; os
-  exemplos passam a definir explicitamente os dados usados no treino.
+- O dataset padrão `DATASET_PADRAO` e suas cópias internas foram removidos; os exemplos agora definem explicitamente os dados de treino.
 - A montagem do armazenamento deixou de criar arquivos de dataset por padrão.
 
 ### Adicionado
 
-- Armazenamento de dados opt-in: a leitura e a gravação de CSV só acontecem
-  quando o programa chama explicitamente as operações de `Seai::Armazenamento`.
-- Os métodos `modelo.exportar()` e `modelo.importar()` para transferir um
-  modelo pela Serial sob solicitação do programa.
-- Importação validada e persistência dos pesos na memória da placa: LittleFS
-  no ESP32 e EEPROM no RP2040.
-- A ferramenta `ferramentas/seai.py`, com os comandos `receber` e `enviar`,
-  para salvar no computador ou transmitir o CSV do modelo.
+- Armazenamento de dados opt-in: leitura e gravação em CSV só ocorrem quando o programa chama explicitamente as operações de `Seai::Armazenamento`.
+- Os métodos `modelo.exportar()` e `modelo.importar()` para transferir um modelo pela Serial sob solicitação do programa.
+- Importação validada e persistência dos pesos na memória da placa: LittleFS no ESP32 e EEPROM no RP2040.
+- A ferramenta `ferramentas/seai.py`, com os comandos `receber` e `enviar`, para salvar no computador ou transmitir o CSV do modelo.
 
 ### Melhorado
 
-- O formato CSV `SEAI_PESOS` é compartilhado por ESP32 e RP2040, delimitado
-  pelos marcadores `SEAI_INICIO` e `SEAI_FIM`; o formato existente não foi
-  substituído por outro.
+- O formato CSV `SEAI_PESOS` é compartilhado por ESP32 e RP2040, delimitado pelos marcadores `SEAI_INICIO` e `SEAI_FIM`; o formato existente não foi substituído por outro.
 - As APIs públicas, os exemplos e a documentação usam o namespace `Seai`.
-- A importação valida versão, dimensões encadeadas e valores finitos do modelo;
-  os fluxos de importação e armazenamento reportam falhas ao usuário.
-- Os comentários de código e as instruções dos exemplos foram detalhados e
-  padronizados.
+- A importação valida versão, dimensões encadeadas e valores finitos do modelo; os fluxos de importação e armazenamento reportam falhas ao usuário.
+- Os comentários de código e as instruções dos exemplos foram detalhados e padronizados.
 
 ### Migração
 
-- Remova dos projetos qualquer referência a `DATASET_PADRAO` e declare seus
-  próprios dados de treino.
-- Chame as operações de CSV ou `modelo.importar()` somente quando desejar
-  ler, gravar ou persistir dados; nenhuma dessas ações é iniciada
-  automaticamente.
-- Atualize referências antigas de namespace para `Seai::`, inclusive nos
-  exemplos e nos projetos que usam os módulos diretamente.
+- Remova dos projetos qualquer referência a `DATASET_PADRAO` e declare seus próprios dados de treino.
+- Chame as operações de CSV ou `modelo.importar()` somente quando desejar ler, gravar ou persistir dados; nenhuma dessas ações é iniciada automaticamente.
+- Atualize referências antigas de namespace para `Seai::`, inclusive nos exemplos e nos projetos que usam os módulos diretamente.
 
 ## Requisitos
 
-- Arduino IDE e a biblioteca Seai instalada.
+- Arduino IDE com a biblioteca Seai instalada.
 - Para os exemplos abaixo: ESP32 e Arduino-ESP32 core 3.x.
 - A exportação e importação de modelos também funcionam em ESP32 e Raspberry Pi Pico (RP2040).
 - Os 5 exemplos de IA desta página foram validados na ESP32-S3.
@@ -57,18 +56,11 @@ modelo por Serial e captura de áudio I2S.
 
 ## O que a Seai pode fazer
 
-Os exemplos demonstram classificação de palavras/textos, classificação de
-sentimentos, regressão linear para estimar consumo de bateria e análise de
-anomalias pela corrente do motor. São exemplos compactos para execução
-embarcada; a qualidade depende dos dados coletados e da representatividade das
-amostras. Os classificadores de texto usam um vocabulário explícito, não um
-modelo de linguagem geral.
+Os exemplos demonstram classificação de palavras/textos, classificação de sentimentos, regressão linear para estimar consumo de bateria e análise de anomalias pela corrente do motor. São exemplos compactos para execução embarcada; a qualidade depende dos dados coletados e da representatividade das amostras. Os classificadores de texto usam um vocabulário explícito, não um modelo de linguagem geral.
 
 ## Exemplos testados na ESP32-S3
 
-Abra cada pasta como sketch independente na Arduino IDE. As referências abaixo
-apontam para imagens que poderão ser adicionadas à pasta `imagens/` do GitHub;
-o código executável fica nos links `.ino`.
+Abra cada pasta como sketch independente na Arduino IDE. As referências abaixo apontam para imagens que poderão ser adicionadas à pasta `imagens/` do GitHub; o código executável fica nos links `.ino`.
 
 ### Previsão de bateria — regressão linear
 
@@ -76,12 +68,7 @@ o código executável fica nos links `.ino`.
 
 [Abrir o sketch PrevisaoBateria.ino](examples/PrevisaoBateria/PrevisaoBateria.ino)
 
-**Como montar os dados:** registre várias viagens. Cada amostra contém carga
-transportada em kg, distância percorrida em km e percentual de bateria gasto
-naquela viagem. Substitua as linhas sintéticas de `dadosFisicos` por medições
-reais. Mantenha o método de medição do percentual consistente e inclua viagens
-com cargas e distâncias variadas. O exemplo normaliza as duas entradas e o alvo
-antes do treino.
+**Como montar os dados:** registre várias viagens. Cada amostra contém carga transportada em kg, distância percorrida em km e percentual de bateria gasto naquela viagem. Substitua as linhas sintéticas de `dadosFisicos` por medições reais. Mantenha o método de medição do percentual consistente e inclua viagens com cargas e distâncias variadas. O exemplo normaliza as duas entradas e o alvo antes do treino.
 
 ### PLN — classificação de palavras
 
@@ -89,13 +76,7 @@ antes do treino.
 
 [Abrir o sketch ClassificacaoPLN.ino](examples/ClassificacaoPLN/ClassificacaoPLN.ino)
 
-**Como montar os dados:** adicione frases representativas a `frasesTreino` e
-um rótulo correspondente em `classesTreino`: `0` para remédio, `1` para resgate
-e `2` para mercadoria. Inclua quantidade e variedade semelhantes por classe.
-Adicione ao `vocabulario` palavras importantes para o seu domínio. O sketch
-transforma cada frase num vetor de presença de palavras usando `Conversor`.
-Palavras fora do vocabulário são ignoradas; o exemplo usa texto ASCII sem
-acentos.
+**Como montar os dados:** adicione frases representativas a `frasesTreino` e um rótulo correspondente em `classesTreino`: `0` para remédio, `1` para resgate e `2` para mercadoria. Inclua quantidade e variedade semelhantes por classe. Adicione ao `vocabulario` palavras importantes para o seu domínio. O sketch transforma cada frase num vetor de presença de palavras usando `Conversor`. Palavras fora do vocabulário são ignoradas; o exemplo usa texto ASCII sem acentos.
 
 ### Classificação de sentimentos
 
@@ -103,12 +84,7 @@ acentos.
 
 [Abrir o sketch ClassificacaoSentimentos.ino](examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino)
 
-**Como montar os dados:** cada frase em `frasesTreino` precisa do rótulo na
-mesma posição em `classesTreino`: `0` para positivo, `1` para negativo e `2`
-para neutro. Use frases reais do seu contexto, incluindo variações de escrita,
-frases neutras e exemplos equilibrados entre classes. Amplie o `vocabulario`
-com palavras relevantes. A tokenização de demonstração usa ASCII sem acentos e
-ignora palavras que não estejam no vocabulário.
+**Como montar os dados:** cada frase em `frasesTreino` precisa do rótulo na mesma posição em `classesTreino`: `0` para positivo, `1` para negativo e `2` para neutro. Use frases reais do seu contexto, incluindo variações de escrita, frases neutras e exemplos equilibrados entre classes. Amplie o `vocabulario` com palavras relevantes. A tokenização de demonstração usa ASCII sem acentos e ignora palavras que não estejam no vocabulário.
 
 ### Anomalia de hélice — análise da corrente do motor
 
@@ -116,21 +92,11 @@ ignora palavras que não estejam no vocabulário.
 
 [Abrir o sketch AnomaliaHelice.ino](examples/AnomaliaHelice/AnomaliaHelice.ino)
 
-**Como montar os dados:** primeiro colete uma série de leituras de corrente
-durante operação normal e preencha `correnteNormal`; o sketch calcula a média
-e o desvio-padrão dessa referência. Depois ajuste `correnteAtual` com a leitura
-que será avaliada e `NUMERO_DESVIOS_ANOMALIA` com o limite N desejado. Para
-treinar com outros motores, substitua `desviosNormalizados` e
-`rotulosAnomalia` por observações rotuladas: cada entrada é o desvio da corrente
-em relação à média, dividido pelo desvio-padrão e por N; use saída `0` para
-normal e `1` para anomalia. A regra direta N-sigma determina se a leitura está
-acima do limite; a classificação da Seai é uma estimativa aprendida adicional.
+**Como montar os dados:** primeiro colete uma série de leituras de corrente durante operação normal e preencha `correnteNormal`; o sketch calcula a média e o desvio-padrão dessa referência. Depois ajuste `correnteAtual` com a leitura que será avaliada e `NUMERO_DESVIOS_ANOMALIA` com o limite N desejado. Para treinar com outros motores, substitua `desviosNormalizados` e `rotulosAnomalia` por observações rotuladas: cada entrada é o desvio da corrente em relação à média, dividido pelo desvio-padrão e por N; use saída `0` para normal e `1` para anomalia. A regra direta N-sigma determina se a leitura está acima do limite; a classificação da Seai é uma estimativa aprendida adicional.
 
 ## Uso da API de modelo
 
-As linhas de `entradas` e `saidasEsperadas` formam amostras correspondentes.
-`executar` treina o modelo e calcula uma previsão inicial; depois, `prever`
-avalia outras entradas com os mesmos parâmetros.
+As linhas de `entradas` e `saidasEsperadas` formam amostras correspondentes. `executar` treina o modelo e calcula uma previsão inicial; depois, `prever` avalia outras entradas com os mesmos parâmetros.
 
 ```cpp
 #include <Seai.h>
@@ -168,15 +134,11 @@ void loop()
 }
 ```
 
-Configure `taxaAprendizado`, `epocas`, `tamanhoLote` e
-`neuroniosPorCamada` antes de chamar `executar`. Configure
-`verbose.mostrarConfiguracao`, `verbose.mostrarNumeroEpoca` ou
-`verbose.mostrarPerdaPorEpoca` para habilitar as respectivas mensagens.
+Configure `taxaAprendizado`, `epocas`, `tamanhoLote` e `neuroniosPorCamada` antes de chamar `executar`. Configure `verbose.mostrarConfiguracao`, `verbose.mostrarNumeroEpoca` ou `verbose.mostrarPerdaPorEpoca` para habilitar as respectivas mensagens.
 
 ### API de alto nível
 
-`Seai::Modelo` é a interface recomendada para a maioria dos projetos. Suas
-propriedades públicas permitem configurar o treino:
+`Seai::Modelo` é a interface recomendada para a maioria dos projetos. Suas propriedades públicas permitem configurar o treino:
 
 | Propriedade | Tipo | Padrão | Uso |
 |---|---:|---:|---|
@@ -186,38 +148,22 @@ propriedades públicas permitem configurar o treino:
 | `neuroniosPorCamada` | `std::vector<int>` | `{8}` | Número de neurônios em cada camada oculta; a saída é dimensionada pelos alvos. |
 | `verbose` | `Seai::Verbose` | opções desligadas | Controla os registros do treino. |
 
-`executar(entradas, saidasEsperadas, entradaPrevisao)` treina e retorna `true`
-quando os dados são válidos. `prever(entrada)` faz inferência após o treino e
-retorna um vetor vazio se o modelo ou a dimensão da entrada forem inválidos.
-Todas as amostras precisam ter dimensões consistentes e conter valores finitos.
-As camadas ocultas usam `tanh`; a camada de saída é linear, portanto aceita
-saídas contínuas para regressão.
+`executar(entradas, saidasEsperadas, entradaPrevisao)` treina e retorna `true` quando os dados são válidos. `prever(entrada)` faz inferência após o treino e retorna um vetor vazio se o modelo ou a dimensão da entrada forem inválidos. Todas as amostras precisam ter dimensões consistentes e conter valores finitos. As camadas ocultas usam `tanh`; a camada de saída é linear, portanto aceita saídas contínuas para regressão.
 
-`exportar()` envia o modelo treinado pela Serial no CSV `SEAI_PESOS` versão 1,
-com dimensões, pesos e vieses, entre `SEAI_INICIO` e `SEAI_FIM`.
-`importar()` espera esse mesmo CSV pela Serial, valida os dados, carrega as
-camadas para previsão e grava os pesos na memória da placa: LittleFS no ESP32
-ou EEPROM no Pico. Nenhuma dessas funções roda automaticamente. O formato e os
-valores exportados são iguais nas duas placas.
+`exportar()` envia o modelo treinado pela Serial no CSV `SEAI_PESOS` versão 1, com dimensões, pesos e vieses, entre `SEAI_INICIO` e `SEAI_FIM`. `importar()` espera esse mesmo CSV pela Serial, valida os dados, carrega as camadas para previsão e grava os pesos na memória da placa: LittleFS no ESP32 ou EEPROM no Pico. Nenhuma dessas funções roda automaticamente. O formato e os valores exportados são iguais nas duas placas.
 
-O exemplo `examples/Seai/Seai.ino` chama essas funções somente quando recebe
-um comando pela ferramenta serial: `E` exporta e `I` importa. Para usar a
-ferramenta, instale o PySerial (`python -m pip install pyserial`) e execute:
+O exemplo `examples/Seai/Seai.ino` chama essas funções somente quando recebe um comando pela ferramenta serial: `E` exporta e `I` importa. Para usar a ferramenta, instale o PySerial (`python -m pip install pyserial`) e execute:
 
 ```text
 python ferramentas/seai.py receber
 python ferramentas/seai.py enviar modelo.csv
 ```
 
-`receber` salva o modelo recebido em `modelo.csv` (use `--saida` para escolher
-outro caminho). `enviar` transmite o arquivo para a placa. Ambos aceitam
-`--porta` para selecionar diretamente a porta serial; sem essa opção, exibem
-as portas disponíveis.
+`receber` salva o modelo recebido em `modelo.csv` (use `--saida` para escolher outro caminho). `enviar` transmite o arquivo para a placa. Ambos aceitam `--porta` para selecionar diretamente a porta serial; sem essa opção, exibem as portas disponíveis.
 
 ### API de baixo nível
 
-Os módulos também podem ser usados separadamente quando o projeto precisa
-controlar uma camada linear e cada etapa do treino:
+Os módulos também podem ser usados separadamente quando o projeto precisa controlar uma camada linear e cada etapa do treino:
 
 | Classe | Métodos principais | Função |
 |---|---|---|
@@ -277,19 +223,11 @@ void loop()
 }
 ```
 
-Essa composição de baixo nível configura uma única camada linear. Para redes
-com várias camadas ocultas e para usar diretamente `modelo.prever`, utilize
-`Seai::Modelo`.
+Essa composição de baixo nível configura uma única camada linear. Para redes com várias camadas ocultas e para usar diretamente `modelo.prever`, utilize `Seai::Modelo`.
 
 ## Dados de treino em CSV (LittleFS)
 
-`Seai::Armazenamento` trabalha com matrizes
-`std::vector<std::vector<float>>`; não depende de uma classe Dataset. O CSV tem
-um cabeçalho com nomes livres e uma linha numérica por amostra. Em
-`lerDados(caminho, quantidadeEntradas, entradas, saidas)`, o argumento
-`quantidadeEntradas` define quantas colunas iniciais são entradas; as demais
-colunas são saídas. O cabeçalho deve conter pelo menos uma coluna de cada tipo,
-e todas as linhas devem ter o mesmo número de campos.
+`Seai::Armazenamento` trabalha com matrizes `std::vector<std::vector<float>>`; não depende de uma classe Dataset. O CSV tem um cabeçalho com nomes livres e uma linha numérica por amostra. Em `lerDados(caminho, quantidadeEntradas, entradas, saidas)`, o argumento `quantidadeEntradas` define quantas colunas iniciais são entradas; as demais colunas são saídas. O cabeçalho deve conter pelo menos uma coluna de cada tipo, e todas as linhas devem ter o mesmo número de campos.
 
 | Método | O que faz |
 |---|---|
@@ -298,13 +236,9 @@ e todas as linhas devem ter o mesmo número de campos.
 | `gravarDados(caminho, nomesEntradas, nomesSaidas, entradas, saidas)` | Grava um CSV novo com os nomes de coluna e as matrizes fornecidas. |
 | `gravarRegistro(caminho, entradas, saidas)` | Acrescenta uma amostra respeitando a ordem das colunas já existente no arquivo. |
 
-O armazenamento é opcional: por padrão, a biblioteca não cria nem grava
-datasets. Chame explicitamente os métodos de `Armazenamento` para montar o
-LittleFS e ler ou gravar dados. Esse módulo de dados CSV está disponível no
-ESP32; a persistência de pesos do modelo também oferece EEPROM no Pico.
+O armazenamento é opcional: por padrão, a biblioteca não cria nem grava datasets. Chame explicitamente os métodos de `Armazenamento` para montar o LittleFS e ler ou gravar dados. Esse módulo de dados CSV está disponível no ESP32; a persistência de pesos do modelo também oferece EEPROM no Pico.
 
-Exemplo de gravação e leitura. O cabeçalho nomeia as colunas; a posição de
-separação continua sendo informada por `quantidadeEntradas`:
+Exemplo de gravação e leitura. O cabeçalho nomeia as colunas; a posição de separação continua sendo informada por `quantidadeEntradas`:
 
 ```cpp
 #include <Seai.h>
@@ -343,12 +277,7 @@ void exemploCsv()
 
 ## Adam e conversão
 
-`Seai::Adam` mantém os momentos do otimizador em vetores, um valor para cada
-parâmetro; não há limite fixo de três parâmetros. O construtor e
-`inicializar` aceitam taxa de aprendizado, decaimento do primeiro momento,
-decaimento do segundo momento e margem numérica. `atualizarParametros`
-recebe o vetor de parâmetros, os gradientes acumulados e o número de amostras
-do lote. Calcula a média local dos gradientes sem alterar o vetor recebido.
+`Seai::Adam` mantém os momentos do otimizador em vetores, um valor para cada parâmetro; não há limite fixo de três parâmetros. O construtor e `inicializar` aceitam taxa de aprendizado, decaimento do primeiro momento, decaimento do segundo momento e margem numérica. `atualizarParametros` recebe o vetor de parâmetros, os gradientes acumulados e o número de amostras do lote. Calcula a média local dos gradientes sem alterar o vetor recebido.
 
 Exemplo de atualização de cinco parâmetros:
 
@@ -359,13 +288,7 @@ const std::vector<float> gradientes = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
 otimizador.atualizarParametros(parametros, gradientes, 4);
 ```
 
-`Seai::Conversor` converte valores entre `FLOAT32`, inteiros e `STRING`.
-Os tipos disponíveis são `FLOAT32`, `INT32`, `INT16`, `INT8`, `UINT8` e
-`STRING`. `tamanhoBytes()` informa a largura dos tipos numéricos.
-`converterDado(tipoDestino, entrada, saida, quantidade, larguraEntrada,
-larguraSaida)` converte um vetor de valores; as larguras são necessárias para
-origem ou destino `STRING`. `larguraMinima` calcula o espaço necessário para
-guardar a maior palavra de um conjunto de strings de largura fixa.
+`Seai::Conversor` converte valores entre `FLOAT32`, inteiros e `STRING`. Os tipos disponíveis são `FLOAT32`, `INT32`, `INT16`, `INT8`, `UINT8` e `STRING`. `tamanhoBytes()` informa a largura dos tipos numéricos. `converterDado(tipoDestino, entrada, saida, quantidade, larguraEntrada, larguraSaida)` converte um vetor de valores; as larguras são necessárias para origem ou destino `STRING`. `larguraMinima` calcula o espaço necessário para guardar a maior palavra de um conjunto de strings de largura fixa.
 
 ```cpp
 #include <Seai.h>
@@ -391,28 +314,15 @@ void loop()
 }
 ```
 
-`Seai::Verbose` permite habilitar separadamente
-`mostrarConfiguracao`, `mostrarNumeroEpoca` e `mostrarPerdaPorEpoca`. No modelo,
-configure essas opções por `modelo.verbose` antes de chamar `executar`.
+`Seai::Verbose` permite habilitar separadamente `mostrarConfiguracao`, `mostrarNumeroEpoca` e `mostrarPerdaPorEpoca`. No modelo, configure essas opções por `modelo.verbose` antes de chamar `executar`.
 
 ## Gravador de áudio
 
-Além de treinar e executar modelos embarcados, a Seai pode se comunicar pela
-porta serial com um script Python no notebook para gravar áudio na placa e
-transferir as gravações para o computador. Pelo menu do script, é possível
-ouvir as gravações, salvá-las no notebook ou excluí-las.
+Além de treinar e executar modelos embarcados, a Seai pode se comunicar pela porta serial com um script Python no notebook para gravar áudio na placa e transferir as gravações para o computador. Pelo menu do script, é possível ouvir as gravações, salvá-las no notebook ou excluí-las.
 
-O fluxo corresponde ao sketch
-`examples/GravadorExemplo/GravadorExemplo.ino` e ao script
-`ferramentas/gravadorVoz/principal.py`. Requer placa e microfone compatíveis,
-script e dependências instalados, além da porta serial da placa.
+O fluxo corresponde ao sketch `examples/GravadorExemplo/GravadorExemplo.ino` e ao script `ferramentas/gravadorVoz/principal.py`. Requer placa e microfone compatíveis, script e dependências instalados, além da porta serial da placa.
 
-No sketch, `Seai::Gravador(tempoSegundos, pinoBclk, pinoWs, pinoDin)`
-configura a duração (limitada de 1 a 10 segundos) e os pinos I2S; os valores
-padrão são 2 segundos e GPIO 4, 5 e 9. `iniciar()` prepara a captura e abre a
-Serial em 921600 baud. Chame `gravar()` repetidamente em `loop()`: ao receber
-`G` pela Serial, o gravador captura áudio mono PCM de 16 kHz/16 bits e envia o
-cabeçalho WAV e os dados binários pela mesma porta.
+No sketch, `Seai::Gravador(tempoSegundos, pinoBclk, pinoWs, pinoDin)` configura a duração (limitada de 1 a 10 segundos) e os pinos I2S; os valores padrão são 2 segundos e GPIO 4, 5 e 9. `iniciar()` prepara a captura e abre a Serial em 921600 baud. Chame `gravar()` repetidamente em `loop()`: ao receber `G` pela Serial, o gravador captura áudio mono PCM de 16 kHz/16 bits e envia o cabeçalho WAV e os dados binários pela mesma porta.
 
 ```cpp
 #include <Seai.h>
@@ -434,10 +344,8 @@ void loop()
 2. Conecte a placa pelo cabo USB de dados e selecione a placa e porta corretas.
 3. Envie o sketch e aguarde o carregamento.
 4. Feche o Serial Monitor para liberar a porta serial.
-5. Siga as instruções de instalação e execução em
-   [`ferramentas/gravadorVoz/README.md`](ferramentas/gravadorVoz/README.md).
-6. No menu do script, selecione a porta, informe o rótulo da palavra e fale
-   quando o LED ficar verde.
+5. Siga as instruções de instalação e execução em [ferramentas/gravadorVoz/README.md](ferramentas/gravadorVoz/README.md).
+6. No menu do script, selecione a porta, informe o rótulo da palavra e fale quando o LED ficar verde.
 7. Ouça, salve ou exclua a gravação pelas opções apresentadas.
 
 ## Referências
