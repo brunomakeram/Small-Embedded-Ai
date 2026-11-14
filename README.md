@@ -163,21 +163,29 @@ python ferramentas/seai.py enviar modelo.csv
 
 ### API de baixo nível
 
-Os módulos também podem ser usados separadamente quando o projeto precisa controlar uma camada linear e cada etapa do treino:
+Os módulos podem ser usados separadamente quando o projeto precisa controlar os componentes e as etapas do treinamento. A tabela abaixo cita todas as classes declaradas nos módulos da biblioteca. `Armazenamento` está disponível no ESP32; `Gravador` depende do suporte I2S/ESP32 compatível. `Dataset` continua declarado como estrutura auxiliar legada, mas não é incluído pelo cabeçalho central `Seai.h` e não representa um dataset padrão da V4.
 
-| Classe | Métodos principais | Função |
+| Classe | Métodos/membros principais | Função |
 |---|---|---|
+| `Seai::Adam` | `inicializar`, `atualizarParametros` | Otimizador Adam; mantém os momentos e atualiza pesos e vieses. |
+| `Seai::Aprendizagem` | `treinarModelo` | Encaminha matrizes de amostras ao executor de épocas e retorna a perda MSE final. |
+| `Seai::Armazenamento` | `montar`, `lerDados`, `gravarDados`, `gravarRegistro` | Lê e grava matrizes numéricas CSV no LittleFS (ESP32). |
+| `Seai::Camadas` | `adicionar`, `limpar`, `tamanho`, `operator[]` | Organiza e dá acesso às camadas da rede. |
+| `Seai::Compilar` | `configurar`, `neuronios`, `otimizador` | Configura uma camada linear e o otimizador Adam para treino de baixo nível. |
+| `Seai::Conversor` | `tamanhoBytes`, `converterDado`, `tipoDestino`, `larguraMinima` | Converte valores entre `FLOAT32`, inteiros e strings. |
+| `Seai::Dataset` | `carga`, `distancia`, `gasto` | Estrutura auxiliar legada para armazenar vetores paralelos; não é necessária para declarar os dados de treino da V4. |
+| `Seai::Epocas` | `executar` | Valida dados, embaralha amostras e coordena as épocas do treino. |
+| `Seai::Gradientes` | `processarAmostraLote` | Calcula previsões e acumula gradientes de pesos e vieses por amostra. |
+| `Seai::Gravador` | `iniciar`, `gravar` | Captura áudio PCM via I2S e envia WAV pela Serial em hardware compatível. |
+| `Seai::Modelo` | `executar`, `prever`, `exportar`, `importar` | API de alto nível para treinamento, inferência e transferência/persistência do modelo. |
 | `Seai::Neuronios` | `configurar`, `inicializar`, `calcular` | Mantém pesos e vieses de uma camada totalmente conectada; aceita de 1 a 64 neurônios. |
-| `Seai::Camadas` | `adicionar`, `limpar`, `tamanho`, `operator[]` | Organiza uma sequência de camadas. |
-| `Seai::Compilar` | `configurar` | Configura e inicializa uma camada e o seu otimizador Adam. |
-| `Seai::Aprendizagem` | `treinarModelo` | Treina as matrizes de amostras por várias épocas e devolve a perda MSE final. |
-| `Seai::Epocas` | `executar` | Valida os dados, embaralha as amostras e coordena as épocas. |
-| `Seai::Treinar` | `executarLotes` | Processa lotes, acumula gradientes e atualiza os parâmetros. |
-| `Seai::Gradientes` | `processarAmostraLote` | Calcula previsões e acumula gradientes de pesos e vieses para uma amostra. |
+| `Seai::Perdas` | `calcularMSE` | Calcula o erro quadrático médio a partir da soma de erros e da quantidade avaliada. |
+| `Seai::Pesos` | `exportarCsv`, `importarCsv`, `salvar` | Serializa, valida, importa e persiste os pesos do modelo. |
 | `Seai::Prever` | `calcular` | Calcula a saída linear de uma camada configurada. |
-| `Seai::Perdas` | `calcularMSE` | Divide a soma dos erros quadráticos pelo total informado. |
+| `Seai::Treinar` | `executarLotes` | Processa lotes, acumula gradientes, calcula perdas e atualiza parâmetros. |
+| `Seai::Verbose` | `registrarConfiguracao`, `registrarEpoca`, `registrarPerdaEpoca` | Controla mensagens de configuração e acompanhamento do treino pela Serial. |
 
-Exemplo de regressão linear usando essa interface:
+Exemplo de regressão linear usando componentes de baixo nível:
 
 ```cpp
 #include <Seai.h>
@@ -344,7 +352,7 @@ void loop()
 2. Conecte a placa pelo cabo USB de dados e selecione a placa e porta corretas.
 3. Envie o sketch e aguarde o carregamento.
 4. Feche o Serial Monitor para liberar a porta serial.
-5. Siga as instruções de instalação e execução em [ferramentas/gravadorVoz/README.md](ferramentas/gravadorVoz/README.md).
+5. Siga as instruções de instalação e execução em [`ferramentas/gravadorVoz/README.md`](ferramentas/gravadorVoz/README.md).
 6. No menu do script, selecione a porta, informe o rótulo da palavra e fale quando o LED ficar verde.
 7. Ouça, salve ou exclua a gravação pelas opções apresentadas.
 
