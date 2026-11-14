@@ -1,0 +1,43 @@
+# Gerencia a comunicação serial com o ESP32 e a recepção do bloco WAV do microfone...
+# A velocidade, o tamanho esperado e o tempo limite devem coincidir com o sketch do gravador...
+# O módulo devolve os bytes em memória; salvar e organizar os arquivos é responsabilidade de arquivos.py...
+
+import time
+
+# Biblioteca que conversa com a porta COM...
+import serial
+
+from config import AMARELO, RESET, TAMANHO_ESPERADO, TEMPO_LIMITE, VELOCIDADE, VERMELHO, estado
+
+
+# Abre a porta serial selecionada somente quando ainda não existe uma conexão reutilizável...
+# Aguarda o tempo de inicialização caso abrir a porta reinicie a placa e devolve o objeto PySerial...
+def abrir_conexao():
+    if estado["conexao"] is None:
+        conexao = serial.Serial(estado["porta"], VELOCIDADE, timeout=TEMPO_LIMITE)
+        # Abrir a porta pode reiniciar a placa, espera ela voltar...
+        time.sleep(2)
+        estado["conexao"] = conexao
+    return estado["conexao"]
+
+
+# Envia o comando G e lê o número fixo de bytes WAV esperado para uma captura de dois segundos...
+# Devolve os bytes apenas se o tamanho e a assinatura RIFF forem válidos; em falhas, registra a mensagem e retorna None...
+def receber_wav():
+    try:
+        conexao = abrir_conexao()
+    except serial.SerialException:
+        estado["mensagem"] = f"{VERMELHO}Nao abriu a porta, tem CoolTerm ou Monitor Serial aberto?{RESET}"
+        return None
+    # Descarta qualquer lixo que tenha chegado antes...
+    conexao.reset_input_buffer()
+    # Dispara a gravação no ESP32...
+    conexao.write(b"G")
+    print(f"{AMARELO}LED piscando, fale quando ficar verde...{RESET}")
+    # Espera os 64044 bytes, ou o tempo limite...
+    dados = conexao.read(TAMANHO_ESPERADO)
+    # Se faltou byte ou não começa com RIFF, a gravação falhou...
+    if len(dados) != TAMANHO_ESPERADO or not dados.startswith(b"RIFF"):
+        estado["mensagem"] = f"{VERMELHO}Falhou: chegaram {len(dados)} bytes de {TAMANHO_ESPERADO}.{RESET}"
+        return None
+    return dados
