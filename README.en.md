@@ -2,9 +2,9 @@
 
 # Small Embedded AI (Seai)
 
-**On-device neural-network training and inference for ESP32 and Raspberry Pi Pico (RP2040).**
+**Object-oriented C++ library for training and running neural networks directly on ESP32 and Raspberry Pi Pico microcontrollers.**
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/brunomakeram/Small-Embedded-Ai/releases)
+[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
 [![Platforms](https://img.shields.io/badge/platforms-ESP32%20%7C%20RP2040-orange.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
 [![Language](https://img.shields.io/badge/language-C%2B%2B-informational.svg)](https://github.com/brunomakeram/Small-Embedded-Ai)
 [![Arduino](https://img.shields.io/badge/framework-Arduino-00979D.svg?logo=arduino&logoColor=white)](https://www.arduino.cc/)
@@ -14,78 +14,94 @@
 
 </div>
 
-Seai is a modular C++ library for training and running lightweight neural networks directly on supported microcontrollers. It provides an object-oriented model API, Adam optimization, batch training, inference, optional weight persistence, CSV utilities, and I2S audio capture components.
+Seai provides on-device training and inference, optional CSV storage, weight persistence using LittleFS/EEPROM, and serial model transfer. Its public API uses the `Seai` namespace and was revised in version 4.0.0.
 
-> **Scope:** This README documents version **3.0.0**. Supported architectures are ESP32 and Raspberry Pi Pico (RP2040). AVR boards, including Arduino Uno, are not supported.
+> Current version: **4.0.0**. The library has been validated for ESP32 and Raspberry Pi Pico (RP2040). AVR boards, including Arduino Uno, are not supported.
 
-## Table of contents
+## Version 4.0.0 (V4) release notes
 
-- [Features](#features)
-- [Supported hardware and requirements](#supported-hardware-and-requirements)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Model API and training behavior](#model-api-and-training-behavior)
-- [Examples](#examples)
-- [Optional modules](#optional-modules)
-- [Repository layout](#repository-layout)
-- [Serial input conventions](#serial-input-conventions)
-- [Limitations and practical guidance](#limitations-and-practical-guidance)
-- [Contributing](#contributing)
-- [License and credits](#license-and-credits)
+### Removed
 
-## Features
+- The default `DATASET_PADRAO` dataset and its internal copies were removed; examples now define their training data explicitly.
+- Mounting storage no longer creates dataset files by default.
 
-- Train a feed-forward neural network on-device from numeric input and target matrices.
-- Configure hidden-layer widths, epochs, batch size, and learning rate through the model object.
-- Optimize parameters using Adam and backpropagation.
-- Run inference on a trained model using `prever(...)`.
-- Calculate and expose the final mean squared error (MSE) through `perdaFinal`.
-- Optionally persist compatible model weights when weight persistence is enabled in the build.
-- Read and write numeric CSV datasets through the storage module on supported configurations.
-- Capture mono PCM audio from an I2S microphone using the ESP32-S3 recorder module.
-- Enable serial diagnostic output through the `Verbose` module.
+### Added
 
-## Supported hardware and requirements
+- Opt-in data storage: CSV reading and writing only take place when the program explicitly calls `Seai::Armazenamento` operations.
+- The `model.exportar()` and `model.importar()` methods to transfer a model over Serial at the program's request.
+- Validated model import and weight persistence in board memory: LittleFS on ESP32 and EEPROM on RP2040.
+- The `ferramentas/seai.py` utility, with `receber` and `enviar` commands, to save a model on the computer or transmit its CSV file.
 
-| Item | Requirement / status |
-|---|---|
-| Supported architectures | ESP32 and RP2040 (Raspberry Pi Pico family) |
-| Arduino environment | Arduino IDE with the Seai library installed |
-| AVR boards | Not supported, including Arduino Uno |
-| Voice recorder | ESP32-S3, Arduino-ESP32 core 3.x, and a compatible INMP441 microphone |
-| RP2040 UF2 example | Arduino-Pico core and a board/profile compatible with the selected flash configuration |
+### Improved
 
-Select the correct board package and board profile for your device before compiling. Hardware-specific modules and examples may have additional pin, core-version, flash, or serial configuration requirements; consult the relevant example and the voice-recorder guide.
+- The `SEAI_PESOS` CSV format is shared by ESP32 and RP2040 and delimited by the `SEAI_INICIO` and `SEAI_FIM` markers; the existing format was not replaced.
+- Public APIs, examples, and documentation use the `Seai` namespace.
+- Import validates the version, chained dimensions, and finite model values; import and storage workflows report failures to the user.
+- Code comments and example instructions were expanded and standardized.
 
-## Installation
+### Migration
 
-### Arduino IDE
+- Remove any references to `DATASET_PADRAO` from your projects and declare your own training data.
+- Call CSV operations or `model.importar()` only when you want to read, write, or persist data; none of these actions starts automatically.
+- Update old namespace references to `Seai::`, including in examples and projects that use modules directly.
 
-Install Seai as an Arduino library using the repository/library folder, then restart the IDE if necessary. The library metadata is in `library.properties`:
+## Requirements
 
-- Library name: `Seai`
-- Version: `3.0.0`
-- Declared architectures: `esp32,rp2040`
+- Arduino IDE with the Seai library installed.
+- The examples below require ESP32 and Arduino-ESP32 core 3.x.
+- Model export and import also work on ESP32 and Raspberry Pi Pico (RP2040).
+- The 5 AI examples on this page were validated on ESP32-S3.
+- The audio recorder also requires a compatible INMP441 microphone.
 
-Open an individual sketch under `examples/` and select the target board and port before compiling or uploading.
+## What Seai can do
 
-### Clone the repository
+The examples demonstrate word/text classification, sentiment classification, linear regression to estimate battery consumption, and motor-current anomaly analysis. They are compact examples for embedded execution; quality depends on the collected data and how representative the samples are. Text classifiers use an explicit vocabulary; they are not general-purpose language models.
 
-```bash
-git clone https://github.com/brunomakeram/Small-Embedded-Ai.git
-```
+## Examples tested on ESP32-S3
 
-Install or place the library in the Arduino libraries directory according to your Arduino IDE setup. The sketches in `examples/` are standalone; open the `.ino` file in the corresponding example folder.
+Open each folder as a standalone sketch in the Arduino IDE. The image references below may point to images that can be added to the repository's `imagens/` folder; executable code is available in the linked `.ino` sketches.
 
-## Quick start
+### Battery prediction — linear regression
 
-The following example illustrates the core API with two input features and one output. The project sketch `examples/Seai/Seai.ino` includes serial input handling and error checks.
+![Battery prediction example](imagens/PrevisaoBateria.jpg)
+
+[Open the PrevisaoBateria.ino sketch](examples/PrevisaoBateria/PrevisaoBateria.ino)
+
+**Preparing the data:** record several trips. Each sample contains transported load in kg, distance traveled in km, and the percentage of battery consumed on that trip. Replace the synthetic rows in `dadosFisicos` with real measurements. Use a consistent method to measure battery percentage and include trips with varied loads and distances. The example normalizes both inputs and the target before training.
+
+### NLP — word classification
+
+![NLP classification example](imagens/ClassificacaoPLN.jpg)
+
+[Open the ClassificacaoPLN.ino sketch](examples/ClassificacaoPLN/ClassificacaoPLN.ino)
+
+**Preparing the data:** add representative sentences to `frasesTreino` and a matching label to `classesTreino`: `0` for medicine, `1` for rescue, and `2` for goods. Include a similar quantity and variety of samples for each class. Add words relevant to your domain to `vocabulario`. The sketch converts each sentence into a word-presence vector using `Conversor`. Words outside the vocabulary are ignored; the example uses ASCII text without accents.
+
+### Sentiment classification
+
+![Sentiment classification example](imagens/ClassificacaoSentimentos.jpg)
+
+[Open the ClassificacaoSentimentos.ino sketch](examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino)
+
+**Preparing the data:** each sentence in `frasesTreino` needs a label at the same position in `classesTreino`: `0` for positive, `1` for negative, and `2` for neutral. Use real sentences from your context, including spelling variations and neutral sentences, and balance examples across classes. Expand `vocabulario` with relevant words. The demonstration tokenizer uses ASCII without accents and ignores words not in the vocabulary.
+
+### Propeller anomaly — motor-current analysis
+
+![Propeller anomaly example](imagens/AnomaliaHelice.jpg)
+
+[Open the AnomaliaHelice.ino sketch](examples/AnomaliaHelice/AnomaliaHelice.ino)
+
+**Preparing the data:** first collect a series of current readings during normal operation and fill in `correnteNormal`; the sketch calculates the mean and standard deviation of this reference. Then set `correnteAtual` to the reading to evaluate and `NUMERO_DESVIOS_ANOMALIA` to the desired N threshold. To train with other motors, replace `desviosNormalizados` and `rotulosAnomalia` with labeled observations: each input is the current deviation from the mean, divided by the standard deviation and by N; use output `0` for normal and `1` for anomaly. The direct N-sigma rule determines whether a reading is above the threshold; Seai's classifier is an additional learned estimate.
+
+## Using the model API
+
+Rows in `entradas` and `saidasEsperadas` form matching samples. `executar` trains the model and computes an initial prediction; then `prever` evaluates other inputs using the same parameters.
 
 ```cpp
 #include <Seai.h>
 #include <vector>
 
-Modelo::Modelo model;
+Seai::Modelo model;
 
 const std::vector<std::vector<float>> inputs = {
     {0.0f, 0.0f},
@@ -93,165 +109,252 @@ const std::vector<std::vector<float>> inputs = {
     {1.0f, 0.0f},
     {1.0f, 1.0f}
 };
-
-const std::vector<std::vector<float>> targets = {
+const std::vector<std::vector<float>> expectedOutputs = {
     {0.0f},
-    {1.0f},
-    {1.0f},
-    {0.0f}
+    {3.0f},
+    {2.0f},
+    {5.0f}
 };
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
-
-    // Train using the supplied dataset and evaluate the given input.
-    if (!model.executar(inputs, targets, {0.0f, 1.0f})) {
-        Serial.println("Training failed.");
-        return;
-    }
-
-    // Inference can also be requested after training.
-    const std::vector<float> prediction = model.prever({0.0f, 1.0f});
-    if (!prediction.empty()) {
-        Serial.println(prediction[0], 4);
+    std::vector<float> firstInput = inputs[0];
+    if (model.executar(inputs, expectedOutputs, firstInput)) {
+        std::vector<float> prediction = model.prever({1.0f, 0.0f});
+        if (!prediction.empty()) {
+            Serial.printf("Predicted output: %.4f\n", prediction[0]);
+        }
     }
 }
 
-void loop() {}
+void loop()
+{
+}
 ```
 
-`executar(...)` receives a matrix of training inputs, a matrix of expected outputs, and one input vector to evaluate after training. Each input row must have a matching target row; all rows must have consistent dimensions. Values must be finite.
+Configure `taxaAprendizado`, `epocas`, `tamanhoLote`, and `neuroniosPorCamada` before calling `executar`. Set `verbose.mostrarConfiguracao`, `verbose.mostrarNumeroEpoca`, or `verbose.mostrarPerdaPorEpoca` to enable the corresponding messages.
 
-## Model API and training behavior
+### High-level API
 
-The main public class is `Modelo::Modelo`, available through `#include <Seai.h>`.
+`Seai::Modelo` is the recommended interface for most projects. Its public properties let you configure training:
 
-| Member | Description |
-|---|---|
-| `taxaAprendizado` | Positive learning rate used to initialize Adam. Default: `0.05f`. |
-| `epocas` | Number of passes over the training data. Default: `500`. |
-| `tamanhoLote` | Number of samples accumulated per parameter update. Values below 1 are treated as 1 during training. Default: `32`. |
-| `neuroniosPorCamada` | Number of neurons in each hidden layer. The output width is inferred from the targets. |
-| `perdaFinal` | MSE calculated on the full training dataset after training. |
-| `verbose` | Logging configuration exposed by the `Verbose` module. |
-| `executar(inputs, targets, predictionInput)` | Validates the data, builds the network, trains it, computes the final loss, optionally saves weights, and evaluates `predictionInput`. Returns `false` on invalid data or configuration. |
-| `prever(input)` | Runs inference using the current model. Returns an empty vector if the model has not been trained or the input is invalid. |
+| Property | Type | Default | Description |
+|---|---:|---:|---|
+| `taxaAprendizado` | `float` | `0.05` | Size of Adam updates. |
+| `epocas` | `int` | `500` | Number of passes through the training set. |
+| `tamanhoLote` | `int` | `32` | Number of samples whose gradients are accumulated before updating parameters. |
+| `neuroniosPorCamada` | `std::vector<int>` | `{8}` | Number of neurons in each hidden layer; the output width is determined by the targets. |
+| `verbose` | `Seai::Verbose` | options off | Controls training logs. |
 
-### Implementation notes
+`executar(inputs, expectedOutputs, predictionInput)` trains and returns `true` when the data is valid. `prever(input)` performs inference after training and returns an empty vector if the model or input dimensions are invalid. All samples must have consistent dimensions and contain finite values. Hidden layers use `tanh`; the output layer is linear and therefore accepts continuous regression outputs.
 
-- The model constructs hidden layers from `neuroniosPorCamada`; the output-layer width comes from the target vectors.
-- Hidden layers use `tanh`; the output layer is linear, which supports regression-style outputs.
-- Training uses backpropagation, Adam updates, shuffled sample order, and mini-batches.
-- The loss reported by `perdaFinal` is mean squared error over the provided dataset.
-- Each configured hidden layer must contain between 1 and 64 neurons. The output layer is also limited to 64 neurons.
-- Inputs, targets, and prediction values must be finite, and all sample dimensions must agree.
-- The model uses `std::vector` for its data and working buffers; account for the available RAM when choosing dataset size and network dimensions.
+`exportar()` sends the trained model over Serial in `SEAI_PESOS` CSV version 1, including dimensions, weights, and biases, between `SEAI_INICIO` and `SEAI_FIM`. `importar()` expects the same CSV over Serial, validates the data, loads the layers for inference, and writes the weights to board memory: LittleFS on ESP32 or EEPROM on Pico. Neither function runs automatically. The format and exported values are the same on both boards.
 
-Example configuration:
-
-```cpp
-model.neuroniosPorCamada = {8, 4}; // Two hidden layers
-model.epocas = 300;
-model.tamanhoLote = 8;
-model.taxaAprendizado = 0.01f;
-```
-
-## Examples
-
-Each directory contains a standalone Arduino sketch. Examples use compact datasets to demonstrate the library; training data and model quality are illustrative and should not be treated as a general-purpose pretrained model.
-
-| Example | Sketch | Demonstration |
-|---|---|---|
-| Basic Seai model | [`examples/Seai/Seai.ino`](examples/Seai/Seai.ino) | Training and inference with two numeric features. |
-| Text classification | [`examples/ClassificacaoPLN/ClassificacaoPLN.ino`](examples/ClassificacaoPLN/ClassificacaoPLN.ino) | Classification using an explicitly defined vocabulary; this is not a general-purpose language model. |
-| Sentiment classification | [`examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino`](examples/ClassificacaoSentimentos/ClassificacaoSentimentos.ino) | A small sentiment-classification demonstration. |
-| Battery prediction | [`examples/PrevisaoBateria/PrevisaoBateria.ino`](examples/PrevisaoBateria/PrevisaoBateria.ino) | Regression-style estimation using battery-related values. |
-| Propeller anomaly | [`examples/AnomaliaHelice/AnomaliaHelice.ino`](examples/AnomaliaHelice/AnomaliaHelice.ino) | Anomaly-analysis demonstration based on motor current. |
-| I2S voice recorder | [`examples/GravadorExemplo/GravadorExemplo.ino`](examples/GravadorExemplo/GravadorExemplo.ino) | Audio capture on supported ESP32-S3 hardware. |
-| RP2040 persistence | [`examples/RP2040_16MB/RP2040_16MB.ino`](examples/RP2040_16MB/RP2040_16MB.ino) | Weight persistence and prediction on a compatible RP2040 setup. |
-
-Example images are in [`imagens/`](imagens/). Open each sketch independently, configure its board and serial settings, and follow the prompts printed by that sketch.
-
-### RP2040 persistence example
-
-The `RP2040_16MB` sketch enables weight persistence with `SALVAR_PESO`. It demonstrates a linear relationship (`y = 2x`) and asks for a prediction value in the Serial Monitor. It uses a 4096-byte emulated EEPROM area; the board's advertised 16 MB flash capacity is **not** used as a 16 MB EEPROM allocation. Use the Arduino-Pico core and a board profile compatible with the selected flash configuration.
-
-## Optional modules
-
-### Weight persistence
-
-Weight persistence is optional and is enabled in a sketch with the appropriate compile-time configuration, as demonstrated by the RP2040 example. When enabled, the model attempts to load compatible saved weights and saves the final trained weights. If weights are absent or invalid/incompatible, training proceeds with newly initialized weights. Verify the target board's storage implementation and available capacity before relying on persistence.
-
-### CSV storage
-
-The `Armazenamento` module provides LittleFS-based CSV operations, including mounting storage, reading numeric input/output columns, writing a dataset, and appending a record. The number of input columns is specified when reading; remaining columns are treated as outputs. CSV files must contain a header and at least one data row, with consistent numeric columns.
-
-Storage support is conditional in the umbrella header. Confirm that the target architecture/build enables the module and provides the expected LittleFS implementation before using it.
-
-### I2S audio recorder
-
-The recorder module is intended for ESP32-S3 with Arduino-ESP32 core 3.x and an INMP441-compatible microphone. Its default configuration uses a 16 kHz sample rate, mono 16-bit PCM WAV output, and BCLK/WS/DIN GPIOs 4/5/9. The recording duration defaults to 2 seconds and is clamped to 1–10 seconds. Pins and duration can be provided to the recorder constructor.
-
-The sketch listens on Serial for the character `G`; when received, it records audio and sends a WAV header followed by PCM samples. Check that the selected board exposes the configured pins and that the microphone is wired for the channel used by the example.
-
-For wiring, setup, and the companion Windows/Python recording utility, see [`ferramentas/gravadorVoz/README.md`](ferramentas/gravadorVoz/README.md). That utility documents its specific prerequisites and procedure; do not assume it applies unchanged to other operating systems or hardware.
-
-## Repository layout
+The `examples/Seai/Seai.ino` example calls these functions only when it receives a command through the serial utility: `E` exports and `I` imports. To use the utility, install PySerial (`python -m pip install pyserial`) and run:
 
 ```text
-.
-├── README.md                     # Portuguese documentation
-├── README.en.md                  # English documentation
-├── GLOSSARIO.md                  # Portuguese glossary
-├── LICENSE
-├── library.properties
-├── src/
-│   ├── Seai.h                    # Public umbrella header
-│   ├── Adam/                     # Adam optimizer
-│   ├── Aprendizagem/             # Learning routines
-│   ├── Armazenamento/            # LittleFS CSV storage
-│   ├── Camadas/                  # Network layers
-│   ├── Compilar/                 # Training/model compilation support
-│   ├── Conversor/                # Data conversion utilities
-│   ├── Epocas/                   # Epoch handling
-│   ├── Gradientes/               # Gradient/backpropagation support
-│   ├── Gravador/                 # I2S audio recorder
-│   ├── Modelo/                   # Model API
-│   ├── Neuronios/                # Neuron implementation
-│   ├── Perdas/                   # Loss functions
-│   ├── Pesos/                    # Weight persistence
-│   ├── Placas/                   # Platform detection/support
-│   ├── Prever/                   # Inference support
-│   ├── Treinar/                  # Training support
-│   └── Verbose/                  # Serial diagnostics
-├── examples/                     # Standalone Arduino sketches
-├── ferramentas/gravadorVoz/      # Voice dataset recording utility
-└── imagens/                      # Example images
+python ferramentas/seai.py receber
+python ferramentas/seai.py enviar modelo.csv
 ```
 
-The public include is `Seai.h`. Individual modules are organized below `src/`; hardware- or feature-specific modules may be conditionally included depending on build configuration.
+`receber` saves the received model as `modelo.csv` (use `--saida` to choose another path). `enviar` transmits the file to the board. Both commands accept `--porta` to select the serial port directly; without it, they display the available ports.
 
-## Serial input conventions
+### Low-level API
 
-Several examples read values from the Arduino Serial Monitor. Set the baud rate indicated by the sketch and select a line ending accepted by that example, commonly **Newline** or **Both NL & CR**. Enter the format requested by the prompt; numeric examples generally expect a decimal point. The recorder sketch uses Serial at 921600 baud for audio transfer, so its serial settings differ from the basic ML sketches.
+The modules can also be used separately when a project needs to control a linear layer and each training step:
 
-## Limitations and practical guidance
+| Class | Main methods | Purpose |
+|---|---|---|
+| `Seai::Neuronios` | `configurar`, `inicializar`, `calcular` | Holds weights and biases for a fully connected layer; supports 1 to 64 neurons. |
+| `Seai::Camadas` | `adicionar`, `limpar`, `tamanho`, `operator[]` | Organizes a sequence of layers. |
+| `Seai::Compilar` | `configurar` | Configures and initializes a layer and its Adam optimizer. |
+| `Seai::Aprendizagem` | `treinarModelo` | Trains sample matrices for multiple epochs and returns the final MSE loss. |
+| `Seai::Epocas` | `executar` | Validates data, shuffles samples, and coordinates epochs. |
+| `Seai::Treinar` | `executarLotes` | Processes batches, accumulates gradients, and updates parameters. |
+| `Seai::Gradientes` | `processarAmostraLote` | Computes predictions and accumulates weight and bias gradients for a sample. |
+| `Seai::Prever` | `calcular` | Calculates the linear output of a configured layer. |
+| `Seai::Perdas` | `calcularMSE` | Divides the sum of squared errors by the specified total. |
 
-- Seai is for the supported ESP32 and RP2040 architectures; it is not compatible with AVR boards such as Arduino Uno.
-- Training executes on the microcontroller. Runtime and RAM use grow with the dataset, number of features, layer widths, and epoch count.
-- Keep network dimensions and training data appropriate for the device's memory and processing budget.
-- Normalize or otherwise prepare input features appropriately for the problem. The library validates finite values and dimensions but does not automatically prepare a dataset for you.
-- Example datasets are demonstrations, not guarantees of accuracy. Use representative data and independently evaluate a trained model for your application.
-- Persistent weights are tied to the supported storage configuration; confirm storage capacity and compatibility on the actual board.
-- Audio capture depends on the specified ESP32-S3/core/microphone combination and correct pin configuration.
+Example of linear regression using this interface:
 
-## Contributing
+```cpp
+#include <Seai.h>
+#include <vector>
 
-Issues, corrections, and improvements are welcome through the repository's GitHub issue and pull-request workflows. When reporting a problem, include the board model, board package/core version, Arduino IDE version, relevant sketch, and complete compiler or runtime output.
+const std::vector<std::vector<float>> inputs = {
+    {0.0f, 0.0f},
+    {0.0f, 1.0f},
+    {1.0f, 0.0f},
+    {1.0f, 1.0f}
+};
+const std::vector<std::vector<float>> expectedOutputs = {
+    {0.0f},
+    {3.0f},
+    {2.0f},
+    {5.0f}
+};
 
-## License and credits
+void setup()
+{
+    Serial.begin(115200);
 
-Created by **Bruno Maker**. See [`LICENSE`](LICENSE) for the applicable license terms.
+    Seai::Compilar layer;
+    if (!layer.configurar(2, 1, 0.03f)) {
+        Serial.println("Failed to configure layer.");
+        return;
+    }
 
-- Repository: [brunomakeram/Small-Embedded-Ai](https://github.com/brunomakeram/Small-Embedded-Ai)
-- Project website: [small-embedded-ai.netlify.app](https://small-embedded-ai.netlify.app/)
+    Seai::Aprendizagem learning;
+    float loss = learning.treinarModelo(
+        inputs, expectedOutputs, layer, 1500, 4);
+    Serial.printf("MSE loss: %.6f\n", loss);
+
+    Seai::Prever predictor;
+    std::vector<float> prediction;
+    if (predictor.calcular({1.0f, 0.0f}, layer.neuronios, prediction)) {
+        Serial.printf("Predicted output: %.4f\n", prediction[0]);
+    }
+}
+
+void loop()
+{
+}
+```
+
+This low-level composition configures a single linear layer. For networks with multiple hidden layers and to use `model.prever` directly, use `Seai::Modelo`.
+
+## Training data in CSV (LittleFS)
+
+`Seai::Armazenamento` works with `std::vector<std::vector<float>>` matrices; it does not depend on a Dataset class. The CSV has a header with arbitrary names and one numeric row per sample. In `lerDados(path, inputCount, inputs, outputs)`, `inputCount` specifies how many initial columns are inputs; the remaining columns are outputs. The header must contain at least one column of each type, and all rows must have the same number of fields.
+
+| Method | Description |
+|---|---|
+| `montar(path)` | Mounts LittleFS without creating or writing a data file. |
+| `lerDados(path, inputCount, inputs, outputs)` | Reads the CSV and separates the input and output matrices. |
+| `gravarDados(path, inputNames, outputNames, inputs, outputs)` | Writes a new CSV with column names and the supplied matrices. |
+| `gravarRegistro(path, inputs, outputs)` | Appends a sample using the column order already present in the file. |
+
+Storage is optional: by default, the library does not create or write datasets. Explicitly call `Armazenamento` methods to mount LittleFS and read or write data. This CSV data module is available on ESP32; model-weight persistence also supports EEPROM on Pico.
+
+Example of writing and reading. The header names the columns; the split position is still specified by `inputCount`:
+
+```cpp
+#include <Seai.h>
+#include <vector>
+
+void csvExample()
+{
+    Seai::Armazenamento storage;
+    const char *path = "/training.csv";
+    const std::vector<String> inputNames = {"load_kg", "distance_km"};
+    const std::vector<String> outputNames = {"battery_used"};
+    const std::vector<std::vector<float>> inputs = {
+        {10.0f, 5.0f},
+        {30.0f, 20.0f}
+    };
+    const std::vector<std::vector<float>> outputs = {
+        {3.75f},
+        {7.50f}
+    };
+
+    if (!storage.montar(path) ||
+        !storage.gravarDados(
+            path, inputNames, outputNames, inputs, outputs)) {
+        Serial.println("Failed to prepare CSV.");
+        return;
+    }
+
+    std::vector<std::vector<float>> loadedInputs;
+    std::vector<std::vector<float>> loadedOutputs;
+    if (storage.lerDados(
+            path, inputNames.size(), loadedInputs, loadedOutputs)) {
+        Serial.printf("Samples read: %u\n", (unsigned)loadedInputs.size());
+    }
+}
+```
+
+## Adam and data conversion
+
+`Seai::Adam` stores optimizer moments in vectors, one value per parameter; there is no fixed limit of three parameters. Its constructor and `inicializar` accept the learning rate, first-moment decay, second-moment decay, and numerical epsilon. `atualizarParametros` receives the parameter vector, accumulated gradients, and batch sample count. It computes the local average of gradients without modifying the input vector.
+
+Example updating five parameters:
+
+```cpp
+Seai::Adam optimizer(0.01f);
+std::vector<float> parameters = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+const std::vector<float> gradients = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
+optimizer.atualizarParametros(parameters, gradients, 4);
+```
+
+`Seai::Conversor` converts values between `FLOAT32`, integers, and `STRING`. Available types are `FLOAT32`, `INT32`, `INT16`, `INT8`, `UINT8`, and `STRING`. `tamanhoBytes()` reports the width of numeric types. `converterDado(destinationType, input, output, count, inputWidth, outputWidth)` converts a vector of values; widths are required when the source or destination is `STRING`. `larguraMinima` calculates the space needed to store the longest word in a set of fixed-width strings.
+
+```cpp
+#include <Seai.h>
+
+Seai::Conversor converter(Seai::Conversor::STRING);
+uint8_t words[2][16] = {"ligar", "desligar"};
+uint8_t copy[2][16] = {};
+
+void setup()
+{
+    bool converted = converter.converterDado(
+        Seai::Conversor::STRING,
+        &words[0][0],
+        &copy[0][0],
+        2,
+        16,
+        16);
+    Serial.println(converted ? "Conversion complete." : "Conversion failed.");
+}
+
+void loop()
+{
+}
+```
+
+`Seai::Verbose` lets you independently enable `mostrarConfiguracao`, `mostrarNumeroEpoca`, and `mostrarPerdaPorEpoca`. In the model, configure these options through `model.verbose` before calling `executar`.
+
+## Audio recorder
+
+In addition to training and running embedded models, Seai can communicate over the serial port with a Python script on a computer to record audio on the board and transfer recordings to the computer. The script menu lets you listen to, save, or delete recordings.
+
+This workflow uses the `examples/GravadorExemplo/GravadorExemplo.ino` sketch and the `ferramentas/gravadorVoz/principal.py` script. It requires a compatible board and microphone, the script and its dependencies, and the board's serial port.
+
+In the sketch, `Seai::Gravador(durationSeconds, pinBclk, pinWs, pinDin)` configures the duration (limited to 1–10 seconds) and I2S pins; defaults are 2 seconds and GPIO 4, 5, and 9. `iniciar()` prepares capture and opens Serial at 921600 baud. Call `gravar()` repeatedly in `loop()`: when it receives `G` over Serial, the recorder captures 16 kHz/16-bit mono PCM audio and sends the WAV header and binary data over the same port.
+
+```cpp
+#include <Seai.h>
+
+Seai::Gravador recorder(2, 4, 5, 9);
+
+void setup()
+{
+    recorder.iniciar();
+}
+
+void loop()
+{
+    recorder.gravar();
+}
+```
+
+1. Open the recorder sketch in the Arduino IDE.
+2. Connect the board using a data-capable USB cable and select the correct board and port.
+3. Upload the sketch and wait for it to finish.
+4. Close the Serial Monitor to release the serial port.
+5. Follow the installation and usage instructions in [`ferramentas/gravadorVoz/README.md`](ferramentas/gravadorVoz/README.md).
+6. In the script menu, select the port, enter the word label, and speak when the LED turns green.
+7. Listen to, save, or delete the recording using the displayed options.
+
+## References
+
+- [Small Embedded AI library website](https://small-embedded-ai.netlify.app/)
+- [Library repository and examples](https://github.com/brunomakeram/Small-Embedded-Ai)
+- [Official Arduino IDE documentation](https://docs.arduino.cc/software/ide-v2/)
+- [Official Arduino library documentation](https://docs.arduino.cc/software/ide-v2/tutorials/ide-v2-installing-a-library/)
+- [Espressif ESP-IDF I2S documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/i2s.html)
+- [Official Arduino-ESP32 installation documentation](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html)
+- [Python tutorial](https://docs.python.org/3/tutorial/)
+- [PySerial documentation](https://pyserial.readthedocs.io/en/latest/)
+- [Project glossary (Portuguese)](GLOSSARIO.md)
