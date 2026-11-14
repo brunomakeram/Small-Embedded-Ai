@@ -1,0 +1,19 @@
+// Garante que este arquivo seja incluído só uma vez por compilação...
+#pragma once
+#include <Arduino.h>
+#include <vector>
+
+// Namespace Seai contém a estrutura simples usada para organizar amostras de dados....
+namespace Seai {
+// Mantém vetores paralelos cujas posições correspondem às amostras do CSV....
+class Dataset {
+public:
+    // Guarda a carga de cada amostra na ordem em que foi lida ou adicionada....
+    std::vector<float> carga;
+    // Guarda a distância associada à carga na mesma posição do vetor....
+    std::vector<float> distancia;
+    // Guarda o alvo de gasto associado à amostra, também na mesma posição....
+    std::vector<float> gasto;
+};
+}
+
