@@ -94,6 +94,10 @@ Abra cada pasta como sketch independente na Arduino IDE. As referências abaixo 
 
 **Como montar os dados:** primeiro colete uma série de leituras de corrente durante operação normal e preencha `correnteNormal`; o sketch calcula a média e o desvio-padrão dessa referência. Depois ajuste `correnteAtual` com a leitura que será avaliada e `NUMERO_DESVIOS_ANOMALIA` com o limite N desejado. Para treinar com outros motores, substitua `desviosNormalizados` e `rotulosAnomalia` por observações rotuladas: cada entrada é o desvio da corrente em relação à média, dividido pelo desvio-padrão e por N; use saída `0` para normal e `1` para anomalia. A regra direta N-sigma determina se a leitura está acima do limite; a classificação da Seai é uma estimativa aprendida adicional.
 
+### Raspberry Pi Pico — RP2040
+
+![Exemplo RP2040](imagens/RP2040.jpg)
+
 ## Uso da API de modelo
 
 As linhas de `entradas` e `saidasEsperadas` formam amostras correspondentes. `executar` treina o modelo e calcula uma previsão inicial; depois, `prever` avalia outras entradas com os mesmos parâmetros.
@@ -160,6 +164,10 @@ python ferramentas/seai.py enviar modelo.csv
 ```
 
 `receber` salva o modelo recebido em `modelo.csv` (use `--saida` para escolher outro caminho). `enviar` transmite o arquivo para a placa. Ambos aceitam `--porta` para selecionar diretamente a porta serial; sem essa opção, exibem as portas disponíveis.
+
+#### Ferramenta de transferência serial
+
+![Ferramenta PySerial](imagens/PySerial.jpg)
 
 ### API de baixo nível
 
