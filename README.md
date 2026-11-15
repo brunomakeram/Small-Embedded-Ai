@@ -375,3 +375,11 @@ void loop()
 - [Documentação Python — tutorial](https://docs.python.org/3/tutorial/)
 - [PySerial — documentação](https://pyserial.readthedocs.io/en/latest/)
 - [Glossário do projeto](GLOSSARIO.md)
+
+## 🚀 Próximos projetos
+
+Outros projetos de sistemas embarcados serão postados em breve, com níveis de complexidade maiores.
+
+---
+
+## 👤 Autor: Bruno Maker
