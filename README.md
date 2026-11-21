@@ -366,7 +366,7 @@ void loop()
 
 ## Referências
 
-- [Site da biblioteca Small Embedded AI](https://small-embedded-ai.netlify.app/)
+- [Site da biblioteca Small Embedded AI](https://s-e-ai.netlify.app/)
 - [Repositório e exemplos da biblioteca](https://github.com/brunomakeram/Small-Embedded-Ai)
 - [Documentação oficial da Arduino IDE](https://docs.arduino.cc/software/ide-v2/)
 - [Documentação oficial Arduino — bibliotecas](https://docs.arduino.cc/software/ide-v2/tutorials/ide-v2-installing-a-library/)
